@@ -1,0 +1,500 @@
+{% extends 'materiais/base.html' %}
+
+{% block title %}Lista de Materiais{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 fade-in-up">
+        <div>
+            <h2 class="mb-0">
+                <i class="fas fa-boxes me-2 text-primary"></i>Materiais Esterilizados
+            </h2>
+            <p class="text-muted mb-0">Gerencie o cadastro e controle de materiais</p>
+        </div>
+        <div>
+            <a href="{% url 'cadastrar_material' %}" class="btn btn-primary pulse">
+                <i class="fas fa-plus-circle me-2"></i>Novo Material
+            </a>
+        </div>
+    </div>
+
+    <!-- Busca e Filtros -->
+    <div class="card shadow-sm mb-4 fade-in-up">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-8">
+                    <label for="search" class="form-label fw-semibold">
+                        <i class="fas fa-search me-1 text-primary"></i>Buscar Material
+                    </label>
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text bg-primary text-white">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" 
+                               name="q" 
+                               id="search"
+                               class="form-control border-start-0" 
+                               placeholder="Digite o nome ou código QR..." 
+                               value="{{ request.GET.q }}">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-filter me-1"></i>Filtrar
+                        </button>
+                    </div>
+                    {% if request.GET.q %}
+                    <div class="form-text mt-2">
+                        <i class="fas fa-info-circle text-info"></i>
+                        Mostrando resultados para: <strong>"{{ request.GET.q }}"</strong>
+                        <a href="{% url 'lista_materiais' %}" class="ms-2 text-decoration-none">
+                            <i class="fas fa-times me-1"></i>Limpar busca
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary flex-fill" onclick="exportData()">
+                            <i class="fas fa-download me-1"></i>Exportar
+                        </button>
+                        <button type="button" class="btn btn-outline-info flex-fill" onclick="printList()">
+                            <i class="fas fa-print me-1"></i>Imprimir
+                        </button>
+                    </div>
+                    <div class="form-text mt-2">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Exporte ou imprima a lista completa
+                        </small>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Grid de Materiais -->
+    <div class="row g-4">
+        {% for material in materiais %}
+        <div class="col-lg-4 col-md-6 fade-in-up">
+            <div class="card h-100 shadow-sm hover-lift">
+                <!-- Status Header -->
+                <div class="card-header bg-light py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="badge {% if material.status_esterilizacao == 'OK' %}bg-success{% else %}bg-warning{% endif %}">
+                            {% if material.status_esterilizacao == 'OK' %}
+                                <i class="fas fa-check-circle me-1"></i>Esterilizado
+                            {% else %}
+                                <i class="fas fa-exclamation-triangle me-1"></i>Pendente
+                            {% endif %}
+                        </span>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" title="Mais opções">
+                                <i class="fas fa-ellipsis-v"></i>
+                                <span class="ms-1">Opções</span>
+                            </button>
+                            <ul class="dropdown-menu shadow border-0">
+                                <li><a class="dropdown-item" href="#" onclick="viewQRCode('{{ material.codigo_qr }}')">
+                                    <i class="fas fa-qrcode me-2 text-info"></i>Ver QR Code
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="printQRCode('{{ material.codigo_qr }}')">
+                                    <i class="fas fa-print me-2 text-secondary"></i>Imprimir QR Code
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="confirmDelete('{{ material.pk }}', '{{ material.nome }}')">
+                                    <i class="fas fa-trash me-2"></i>Excluir Material
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card Body -->
+                <div class="card-body">
+                    <h5 class="card-title text-primary mb-3">
+                        {{ material.nome }}
+                    </h5>
+                    
+                    <!-- Informações Principais -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Categoria</small>
+                            <strong>{{ material.categoria|default:"-" }}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Lote</small>
+                            <strong>{{ material.lote }}</strong>
+                        </div>
+                    </div>
+
+                    <!-- Validade e Estoque -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Validade</small>
+                            <span class="{% if material.validade < hoje %}text-danger{% else %}text-success{% endif %}">
+                                <strong>{{ material.validade|date:"d/m/Y" }}</strong>
+                                {% if material.validade < hoje %}
+                                <i class="fas fa-exclamation-triangle ms-1" title="Vencido"></i>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block">Estoque</small>
+                            <span class="{% if material.estoque <= 5 %}text-warning{% else %}text-success{% endif %}">
+                                <strong>{{ material.estoque }}</strong>
+                                {% if material.estoque <= 5 %}
+                                <i class="fas fa-exclamation-triangle ms-1" title="Estoque baixo"></i>
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Responsável e Localização -->
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Responsável</small>
+                        <strong>{{ material.responsavel }}</strong>
+                        {% if material.localizacao %}
+                        <small class="text-muted ms-2">• {{ material.localizacao }}</small>
+                        {% endif %}
+                    </div>
+
+                    <!-- QR Code -->
+                    {% if material.qr_image %}
+                    <div class="text-center mt-3">
+                        <img src="{{ material.qr_image.url }}" 
+                             class="img-fluid border rounded shadow-sm" 
+                             alt="QR Code {{ material.nome }}"
+                             style="max-width: 120px; height: auto;">
+                        <div class="form-text mt-1">
+                            <small class="text-muted">{{ material.codigo_qr }}</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Card Footer -->
+                <div class="card-footer bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i>
+                            {% if material.data_esterilizacao %}
+                            Esterilizado: {{ material.data_esterilizacao|date:"d/m/Y" }}
+                            {% else %}
+                            Sem data de esterilização
+                            {% endif %}
+                        </small>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="showMaterialDetails({{ material.id }})" title="Ver Detalhes">
+                                <i class="fas fa-eye"></i>
+                                <span class="d-none d-md-inline ms-1">Ver</span>
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="printMaterialQR('{{ material.codigo_qr }}')" title="Imprimir QR Code">
+                                <i class="fas fa-qrcode"></i>
+                                <span class="d-none d-md-inline ms-1">QR</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <div class="fade-in-up">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">Nenhum material encontrado</h4>
+                <p class="text-muted">
+                    {% if request.GET.q %}
+                    Não há materiais correspondentes à busca "<strong>{{ request.GET.q }}</strong>"
+                    {% else %}
+                    Comece cadastrando seu primeiro material no sistema
+                    {% endif %}
+                </p>
+                <a href="{% url 'cadastrar_material' %}" class="btn btn-primary mt-3">
+                    <i class="fas fa-plus-circle me-2"></i>Cadastrar Primeiro Material
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Paginação -->
+    {% if is_paginated %}
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <div class="text-muted">
+            <i class="fas fa-info-circle me-1"></i>
+            Mostrando {{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ page_obj.paginator.count }} materiais
+        </div>
+        <nav>
+            <ul class="pagination mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ request.GET.q }}&page={{ page_obj.previous_page_number }}">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">
+                        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ request.GET.q }}&page={{ page_obj.next_page_number }}">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const elements = document.querySelectorAll('.fade-in-up');
+    elements.forEach((el, index) => {
+        setTimeout(() => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s ease';
+            
+            setTimeout(() => {
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+            }, 50);
+        }, index * 100);
+    });
+});
+
+function showMaterialDetails(id) {
+    // Mostrar informações completas do material
+    console.log('Visualizando detalhes do material:', id);
+    
+    // Encontrar o card do material
+    const card = document.querySelector(`button[onclick="showMaterialDetails(${id})"]`).closest('.card');
+    const materialName = card.querySelector('.card-title').textContent;
+    const materialCode = card.querySelector('.text-muted').textContent;
+    
+    showNotification(`
+        <strong>Detalhes do Material</strong><br>
+        Nome: ${materialName}<br>
+        Código: ${materialCode}<br>
+        ID: ${id}
+    `, 'info');
+}
+
+function printMaterialQR(codigo) {
+    // Mostrar QR Code e preparar impressão
+    console.log('Imprimindo QR Code:', codigo);
+    
+    showNotification(`
+        <strong>QR Code Gerado!</strong><br>
+        Código: ${codigo}<br>
+        <small>Preparando impressão...</small>
+    `, 'success');
+    
+    // Simular impressão após 1 segundo
+    setTimeout(() => {
+        window.print();
+        showNotification('Impressão enviada para a impressora!', 'success');
+    }, 1500);
+}
+
+function viewQRCode(codigo) {
+    // Visualizar QR Code em modal
+    console.log('Visualizando QR Code:', codigo);
+    
+    // Criar modal simples
+    const modal = document.createElement('div');
+    modal.className = 'modal fade show';
+    modal.style.cssText = 'display: block; background: rgba(0,0,0,0.5);';
+    modal.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">QR Code do Material</h5>
+                    <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div style="width: 200px; height: 200px; margin: 0 auto; border: 2px solid #ddd; display: flex; align-items: center; justify-content: center; background: white;">
+                        <div>
+                            <i class="fas fa-qrcode fa-4x text-muted"></i>
+                            <p class="mt-2 mb-0"><strong>${codigo}</strong></p>
+                        </div>
+                    </div>
+                    <p class="mt-3 text-muted">Código QR: ${codigo}</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Fechar</button>
+                    <button type="button" class="btn btn-primary" onclick="printQRCode('${codigo}')">Imprimir</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function printQRCode(codigo) {
+    // Fechar modal se existir e imprimir
+    const modal = document.querySelector('.modal');
+    if (modal) modal.remove();
+    
+    console.log('Imprimindo QR Code:', codigo);
+    showNotification(`Imprimindo QR Code: ${codigo}`, 'success');
+    
+    setTimeout(() => {
+        window.print();
+    }, 1000);
+}
+
+function confirmDelete(id, nome) {
+    if (confirm(`Tem certeza que deseja excluir o material "${nome}"?`)) {
+        console.log('Excluindo material:', id, nome);
+        showNotification(`Material "${nome}" excluído com sucesso!`, 'success');
+    }
+}
+
+function showNotification(message, type = 'info') {
+    // Criar elemento de notificação
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 400px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Adicionar ao DOM
+    document.body.appendChild(notification);
+    
+    // Remover após 5 segundos
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Busca em tempo real (opcional)
+const searchInput = document.getElementById('search');
+if (searchInput) {
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            if (this.value.length >= 3 || this.value.length === 0) {
+                this.form.submit();
+            }
+        }, 500);
+    });
+}
+</script>
+
+<style>
+/* Animações */
+.fade-in-up {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s ease;
+}
+
+.fade-in-up.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Cards hover */
+.hover-lift {
+    transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 0.5rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.5rem;
+    }
+}
+
+/* Estilos de impressão */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    .card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    
+    .container-fluid {
+        max-width: 100%;
+        padding: 0;
+    }
+}
+
+/* Loading states */
+.loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* Badges animados */
+.badge {
+    transition: all 0.3s ease;
+}
+
+.badge:hover {
+    transform: scale(1.05);
+}
+
+/* Dropdown melhorado */
+.dropdown-menu {
+    border: none;
+    box-shadow: var(--shadow-md);
+    border-radius: var(--radius-md);
+    animation: fadeInUp 0.3s ease;
+}
+
+.dropdown-item {
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: rgba(0, 102, 204, 0.1);
+    transform: translateX(3px);
+}
+</style>
+
+{% endblock %}

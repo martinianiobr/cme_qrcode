@@ -1,0 +1,213 @@
+{% extends 'materiais/base.html' %}
+{% block title %}Lista de Kits{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 fade-in-up">
+        <div>
+            <h2 class="mb-0">
+                <i class="fas fa-briefcase me-2 text-primary"></i>Kits Cirúrgicos
+            </h2>
+            <p class="text-muted mb-0">Conjuntos de materiais organizados por procedimento</p>
+        </div>
+        <a href="{% url 'cadastrar_kit' %}" class="btn btn-primary pulse">
+            <i class="fas fa-plus-circle me-2"></i>Novo Kit
+        </a>
+    </div>
+
+    <!-- Busca -->
+    <div class="card shadow-sm mb-4 fade-in-up">
+        <div class="card-body">
+            <form method="get">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label for="search" class="form-label fw-semibold">
+                            <i class="fas fa-search me-1 text-primary"></i>Buscar Kit
+                        </label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text bg-primary text-white">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" 
+                                   name="q" 
+                                   id="search"
+                                   class="form-control border-start-0" 
+                                   placeholder="Digite o nome do kit..." 
+                                   value="{{ request.GET.q }}">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fas fa-filter me-1"></i>Filtrar
+                            </button>
+                        </div>
+                        {% if request.GET.q %}
+                        <div class="form-text mt-2">
+                            <i class="fas fa-info-circle text-info"></i>
+                            Mostrando resultados para: <strong>"{{ request.GET.q }}"</strong>
+                            <a href="{% url 'lista_kits' %}" class="ms-2 text-decoration-none">
+                                <i class="fas fa-times me-1"></i>Limpar busca
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-end h-100">
+                            <div class="form-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    <strong>{{ kits|length }}</strong> kits encontrados
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Grid de Kits -->
+    <div class="row g-4">
+        {% for kit in kits %}
+        <div class="col-lg-4 col-md-6 fade-in-up">
+            <div class="card h-100 shadow-sm hover-lift">
+                <!-- Header do Card -->
+                <div class="card-header bg-light py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 text-primary">
+                            <i class="fas fa-briefcase me-2"></i>{{ kit.nome }}
+                        </h5>
+                        <span class="badge bg-info">
+                            <i class="fas fa-layer-group me-1"></i>{{ kit.materiais.count }} itens
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Card Body -->
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Lacre</small>
+                        <p class="mb-0 fw-semibold">{{ kit.lacre|default:"Não informado" }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Materiais incluídos</small>
+                        <div class="mt-2" style="max-height: 150px; overflow-y: auto;">
+                            {% for mat in kit.materiais.all %}
+                            <div class="d-flex align-items-center mb-2 p-2 bg-light rounded">
+                                <i class="fas fa-box me-2 text-primary"></i>
+                                <small class="flex-fill">{{ mat.nome }}</small>
+                                {% if mat.status_esterilizacao == 'OK' %}
+                                <span class="badge bg-success btn-sm">OK</span>
+                                {% else %}
+                                <span class="badge bg-warning btn-sm">Pendente</span>
+                                {% endif %}
+                            </div>
+                            {% empty %}
+                            <div class="text-muted text-center py-2">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Nenhum material neste kit
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card Footer -->
+                <div class="card-footer bg-light">
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'lista_checklists' %}" class="btn btn-outline-primary flex-fill">
+                            <i class="fas fa-info-circle me-1"></i>Ver Checklists
+                        </a>
+                        <a href="{% url 'cadastrar_checklist' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-plus"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <div class="fade-in-up">
+                <i class="fas fa-briefcase fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">Nenhum kit cadastrado</h4>
+                <p class="text-muted">Comece criando seu primeiro kit cirúrgico</p>
+                <a href="{% url 'cadastrar_kit' %}" class="btn btn-primary mt-2">
+                    <i class="fas fa-plus-circle me-2"></i>Criar Primeiro Kit
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Paginação -->
+    {% if is_paginated %}
+    <div class="d-flex justify-content-center mt-4">
+        <nav>
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animações de entrada
+    const elements = document.querySelectorAll('.fade-in-up');
+    elements.forEach((el, index) => {
+        setTimeout(() => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s ease';
+            
+            setTimeout(() => {
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+            }, 50);
+        }, index * 100);
+    });
+});
+</script>
+
+<style>
+.hover-lift {
+    transition: all 0.3s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+.fade-in-up {
+    opacity: 1;
+    transform: translateY(0);
+}
+</style>
+
+{% endblock %}

@@ -1,0 +1,373 @@
+{% extends 'materiais/base.html' %}
+{% block title %}Cadastrar Material{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg fade-in-up">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-plus-circle me-2"></i>Cadastrar Novo Material
+                    </h4>
+                    <a href="{% url 'lista_materiais' %}" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>Voltar
+                    </a>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" id="materialForm" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Informações Básicas -->
+                        <div class="section-header mb-4">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-info-circle me-2"></i>Informações Básicas
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-8">
+                                    <label for="{{ form.nome.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-tag me-1 text-primary"></i>Nome do Material
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.nome }}
+                                    <div class="form-text">
+                                        <i class="fas fa-lightbulb text-warning"></i>
+                                        Digite um nome descritivo para fácil identificação
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ form.categoria.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-layer-group me-1 text-primary"></i>Categoria
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.categoria }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Controle de Estoque -->
+                        <div class="section-header mb-4">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-boxes me-2"></i>Controle de Estoque
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="{{ form.lote.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-barcode me-1 text-primary"></i>Lote
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.lote }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ form.estoque.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-cubes me-1 text-primary"></i>Quantidade em Estoque
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.estoque }}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle text-info"></i>
+                                        Quantidade disponível para uso
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ form.validade.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-calendar-alt me-1 text-primary"></i>Data de Validade
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.validade }}
+                                    <div class="form-text">
+                                        <i class="fas fa-exclamation-triangle text-warning"></i>
+                                        Verifique validade antes do uso
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Esterilização -->
+                        <div class="section-header mb-4">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-shield-alt me-2"></i>Controle de Esterilização
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="{{ form.data_esterilizacao.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-thermometer-half me-1 text-primary"></i>Data da Esterilização
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.data_esterilizacao }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.status_esterilizacao.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-check-double me-1 text-primary"></i>Status da Esterilização
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.status_esterilizacao }}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle text-info"></i>
+                                        Apenas materiais "OK" podem ser utilizados
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Responsável e Localização -->
+                        <div class="section-header mb-4">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-user-tie me-2"></i>Responsável e Localização
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="{{ form.responsavel.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-user me-1 text-primary"></i>Responsável
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.responsavel }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.localizacao.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-map-marker-alt me-1 text-primary"></i>Localização
+                                    </label>
+                                    {{ form.localizacao }}
+                                    <div class="form-text">
+                                        <i class="fas fa-lightbulb text-warning"></i>
+                                        Onde o material está armazenado
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Informações Adicionais -->
+                        <div class="section-header mb-4">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-plus me-2"></i>Informações Adicionais
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="{{ form.fornecedor.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-truck me-1 text-primary"></i>Fornecedor
+                                    </label>
+                                    {{ form.fornecedor }}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle text-info"></i>
+                                        Empresa que forneceu o material (opcional)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                            <a href="{% url 'lista_materiais' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                            <div>
+                                <button type="reset" class="btn btn-outline-warning me-2">
+                                    <i class="fas fa-undo me-2"></i>Limpar Formulário
+                                </button>
+                                <button type="submit" class="btn btn-primary pulse">
+                                    <i class="fas fa-save me-2"></i>Salvar Material
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('materialForm');
+    const inputs = form.querySelectorAll('input, select');
+    
+    // Validação em tempo real
+    inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            validateField(this);
+        });
+        
+        input.addEventListener('input', function() {
+            if (this.classList.contains('is-invalid') || this.classList.contains('is-valid')) {
+                validateField(this);
+            }
+        });
+    });
+    
+    function validateField(field) {
+        const value = field.value.trim();
+        let isValid = true;
+        let errorMessage = '';
+        
+        // Remover classes anteriores
+        field.classList.remove('is-valid', 'is-invalid');
+        
+        // Validações específicas
+        if (field.required && !value) {
+            isValid = false;
+            errorMessage = 'Este campo é obrigatório';
+        } else if (field.type === 'number' && value) {
+            const numValue = parseFloat(value);
+            if (field.name === 'estoque' && numValue < 0) {
+                isValid = false;
+                errorMessage = 'Estoque não pode ser negativo';
+            }
+        } else if (field.type === 'date' && value) {
+            const dateValue = new Date(value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (field.name === 'validade' && dateValue <= today) {
+                isValid = false;
+                errorMessage = 'Validade deve ser maior que hoje';
+            }
+        }
+        
+        // Aplicar resultado da validação
+        if (value) {
+            if (isValid) {
+                field.classList.add('is-valid');
+                removeErrorMessage(field);
+            } else {
+                field.classList.add('is-invalid');
+                showErrorMessage(field, errorMessage);
+            }
+        } else {
+            removeErrorMessage(field);
+        }
+    }
+    
+    function showErrorMessage(field, message) {
+        removeErrorMessage(field);
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'invalid-feedback d-block';
+        errorDiv.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i>${message}`;
+        
+        field.parentNode.appendChild(errorDiv);
+    }
+    
+    function removeErrorMessage(field) {
+        const existingError = field.parentNode.querySelector('.invalid-feedback');
+        if (existingError) {
+            existingError.remove();
+        }
+    }
+    
+    // Validação ao submeter
+    form.addEventListener('submit', function(e) {
+        let isFormValid = true;
+        
+        inputs.forEach(input => {
+            validateField(input);
+            if (input.classList.contains('is-invalid')) {
+                isFormValid = false;
+            }
+        });
+        
+        if (!isFormValid) {
+            e.preventDefault();
+            
+            // Mostrar alerta geral
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Atenção!</strong> Por favor, corrija os erros destacados no formulário.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            form.insertBefore(alertDiv, form.firstChild);
+            
+            // Scroll para o topo
+            form.scrollIntoView({ behavior: 'smooth' });
+            
+            // Auto-remover após 5 segundos
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+    });
+    
+    // Máscaras e formatações
+    const nomeInput = document.getElementById('id_nome');
+    if (nomeInput) {
+        nomeInput.addEventListener('input', function() {
+            this.value = this.value.charAt(0).toUpperCase() + this.value.slice(1);
+        });
+    }
+});
+</script>
+
+<style>
+.section-header {
+    position: relative;
+    padding-left: 1rem;
+}
+
+.section-header::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 30px;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    border-radius: 2px;
+}
+
+.form-label {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.form-text {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+.card {
+    border: none;
+    border-radius: var(--radius-xl);
+}
+
+.invalid-feedback.d-block {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* Animação de focus nos campos */
+.form-control:focus,
+.form-select:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 102, 204, 0.15);
+}
+
+/* Loading state no botão */
+.btn.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.btn.loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    margin-left: 8px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+
+{% endblock %}

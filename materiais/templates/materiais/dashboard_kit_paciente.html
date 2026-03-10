@@ -1,0 +1,230 @@
+{% extends 'materiais/base.html' %}
+{% block title %}Processos Cirúrgicos{% endblock %}
+{% block content %}
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 fade-in-up">
+        <div>
+            <h2 class="mb-0">
+                <i class="fas fa-procedures me-2 text-primary"></i>Processos Cirúrgicos
+            </h2>
+            <p class="text-muted mb-0">Acompanhamento de kits por paciente</p>
+        </div>
+        <a href="{% url 'criar_kit_paciente' %}" class="btn btn-primary pulse">
+            <i class="fas fa-plus-circle me-2"></i>Novo Processo
+        </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-4 fade-in-up">
+        <div class="card-body">
+            <form method="get">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="busca_paciente" class="form-label fw-semibold">
+                            <i class="fas fa-search me-1 text-primary"></i>Buscar Paciente
+                        </label>
+                        <input type="text" 
+                               name="q" 
+                               id="busca_paciente"
+                               class="form-control" 
+                               placeholder="Nome ou prontuário..." 
+                               value="{{ request.GET.q }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filtro_status" class="form-label fw-semibold">
+                            <i class="fas fa-filter me-1 text-primary"></i>Status
+                        </label>
+                        <select name="status" id="filtro_status" class="form-control">
+                            <option value="">Todos</option>
+                            <option value="agendado" {% if request.GET.status == 'agendado' %}selected{% endif %}>Agendado</option>
+                            <option value="pre_operatorio" {% if request.GET.status == 'pre_operatorio' %}selected{% endif %}>Pré-operatório</option>
+                            <option value="intra_operatorio" {% if request.GET.status == 'intra_operatorio' %}selected{% endif %}>Intra-operatório</option>
+                            <option value="pos_operatorio" {% if request.GET.status == 'pos_operatorio' %}selected{% endif %}>Pós-operatório</option>
+                            <option value="concluido" {% if request.GET.status == 'concluido' %}selected{% endif %}>Concluído</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filtro_data" class="form-label fw-semibold">
+                            <i class="fas fa-calendar me-1 text-primary"></i>Data Cirurgia
+                        </label>
+                        <input type="date" 
+                               name="data" 
+                               id="filtro_data"
+                               class="form-control" 
+                               value="{{ request.GET.data }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">&nbsp;</label>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-1"></i>Filtrar
+                            </button>
+                            {% if request.GET.q or request.GET.status or request.GET.data %}
+                            <a href="{% url 'dashboard_kit_paciente' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>Limpar
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Grid de Processos -->
+    <div class="row g-4">
+        {% for kit_paciente in kits_paciente %}
+        <div class="col-lg-6 col-xl-4 fade-in-up">
+            <div class="card h-100 shadow-sm hover-lift">
+                <!-- Header do Card -->
+                <div class="card-header bg-light py-3">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="mb-1 text-primary">
+                                <i class="fas fa-user-injured me-2"></i>{{ kit_paciente.paciente.nome }}
+                            </h5>
+                            <small class="text-muted">
+                                <i class="fas fa-id-card me-1"></i>{{ kit_paciente.paciente.prontuario }}
+                            </small>
+                        </div>
+                        <span class="badge {% if kit_paciente.status == 'concluido' %}bg-success{% elif kit_paciente.status == 'cancelado' %}bg-danger{% else %}bg-warning{% endif %}">
+                            {{ kit_paciente.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Card Body -->
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Kit Cirúrgico</small>
+                        <strong class="text-primary">{{ kit_paciente.kit.nome }}</strong>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Data da Cirurgia</small>
+                        <strong>{{ kit_paciente.data_cirurgia|date:"d/m/Y H:i" }}</strong>
+                    </div>
+
+                    <!-- Etapas do Processo -->
+                    <div class="etapas-processo">
+                        {% for fase, nome_fase in checklist.FASE_CHOICES %}
+                            {% for checklist_atual in kit_paciente.checklists.all %}
+                                {% if checklist_atual.fase == fase %}
+                        <div class="etapa-item mb-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    {% if checklist_atual.concluido %}
+                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                    {% elif checklist_atual.pode_acessar %}
+                                        <i class="fas fa-clock text-warning me-2"></i>
+                                    {% else %}
+                                        <i class="fas fa-lock text-muted me-2"></i>
+                                    {% endif %}
+                                    <span class="{% if not checklist_atual.pode_acessar %}text-muted{% endif %}">
+                                        {{ nome_fase }}
+                                    </span>
+                                </div>
+                                {% if checklist_atual %}
+                                <div class="progress-info">
+                                    <small class="text-muted">{{ checklist_atual.progresso }}%</small>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            {% if checklist_atual %}
+                            <div class="progress mt-1" style="height: 4px;">
+                                <div class="progress-bar {% if checklist_atual.concluido %}bg-success{% else %}bg-warning{% endif %}" 
+                                     style="width: {{ checklist_atual.progresso }}%"></div>
+                            </div>
+                            {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Card Footer -->
+                <div class="card-footer bg-light">
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'detalhes_kit_paciente' kit_paciente.id %}" 
+                           class="btn btn-outline-primary flex-fill">
+                            <i class="fas fa-eye me-1"></i>Ver Detalhes
+                        </a>
+                        {% if kit_paciente.processo_concluido %}
+                        <a href="{% url 'relatorio_final' kit_paciente.id %}" 
+                           class="btn btn-outline-success">
+                            <i class="fas fa-file-pdf me-1"></i>Relatório
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <div class="fade-in-up">
+                <i class="fas fa-procedures fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">Nenhum processo encontrado</h4>
+                <p class="text-muted">
+                    {% if request.GET.q or request.GET.status or request.GET.data %}
+                    Não há processos correspondentes aos filtros aplicados
+                    {% else %}
+                    Comece criando um novo processo cirúrgico
+                    {% endif %}
+                </p>
+                <a href="{% url 'criar_kit_paciente' %}" class="btn btn-primary mt-3">
+                    <i class="fas fa-plus-circle me-2"></i>Criar Primeiro Processo
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animações de entrada
+    const elements = document.querySelectorAll('.fade-in-up');
+    elements.forEach((el, index) => {
+        setTimeout(() => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s ease';
+            
+            setTimeout(() => {
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+            }, 50);
+        }, index * 100);
+    });
+});
+</script>
+
+<style>
+.etapas-processo {
+    border-left: 3px solid #dee2e6;
+    padding-left: 1rem;
+}
+
+.etapa-item {
+    transition: all 0.3s ease;
+}
+
+.etapa-item:hover {
+    background-color: rgba(0, 102, 204, 0.05);
+    border-radius: 4px;
+    padding: 0.5rem;
+    margin-left: -1rem;
+    padding-left: 1.5rem;
+}
+
+.progress-info {
+    min-width: 40px;
+    text-align: right;
+}
+</style>
+
+{% endblock %}

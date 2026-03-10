@@ -1,0 +1,368 @@
+{% extends 'materiais/base.html' %}
+{% block title %}Detalhes do Processo - {{ kit_paciente.paciente.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 fade-in-up">
+        <div>
+            <h2 class="mb-0">
+                <i class="fas fa-procedures me-2 text-primary"></i>Detalhes do Processo
+            </h2>
+            <p class="text-muted mb-0">{{ kit_paciente.paciente.nome }}</p>
+        </div>
+        <div>
+            <a href="{% url 'dashboard_kit_paciente' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Voltar
+            </a>
+            <a href="{% url 'relatorio_final' kit_paciente.id %}" 
+               class="btn btn-outline-success {% if not kit_paciente.processo_concluido %}disabled{% endif %}">
+                <i class="fas fa-file-pdf me-1"></i>Relatório Final
+            </a>
+        </div>
+    </div>
+
+    <!-- Informações Principais -->
+    <div class="row g-4 mb-4 fade-in-up">
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-user-injured me-2"></i>Dados do Paciente
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Nome Completo</small>
+                        <strong>{{ kit_paciente.paciente.nome }}</strong>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Prontuário</small>
+                        <strong>{{ kit_paciente.paciente.prontuario }}</strong>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Data de Nascimento</small>
+                        <strong>{{ kit_paciente.paciente.data_nascimento|date:"d/m/Y" }}</strong>
+                    </div>
+                    <div class="mb-0">
+                        <small class="text-muted d-block">Telefone</small>
+                        <strong>{{ kit_paciente.paciente.telefone|default:"Não informado" }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-briefcase me-2"></i>Dados do Kit
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Kit Cirúrgico</small>
+                        <strong>{{ kit_paciente.kit.nome }}</strong>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Lacre</small>
+                        <strong>{{ kit_paciente.kit.lacre }}</strong>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Data da Cirurgia</small>
+                        <strong>{{ kit_paciente.data_cirurgia|date:"d/m/Y H:i" }}</strong>
+                    </div>
+                    <div class="mb-0">
+                        <small class="text-muted d-block">Status</small>
+                        <span class="badge {% if kit_paciente.status == 'concluido' %}bg-success{% elif kit_paciente.status == 'cancelado' %}bg-danger{% else %}bg-warning{% endif %}">
+                            {{ kit_paciente.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Etapas do Processo -->
+    <div class="row g-4 mb-4 fade-in-up">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>Etapas do Processo
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        {% for fase, nome_fase in checklist.FASE_CHOICES %}
+                            {% for checklist_atual in kit_paciente.checklists.all %}
+                                {% if checklist_atual.fase == fase %}
+                        <div class="col-md-4">
+                            <div class="card border {% if checklist_atual %}border-primary{% else %}border-secondary{% endif %}">
+                                <div class="card-body text-center">
+                                    <h6 class="{% if not checklist_atual.pode_acessar %}text-muted{% endif %}">
+                                        {% if checklist_atual.concluido %}
+                                            <i class="fas fa-check-circle text-success me-2"></i>
+                                        {% elif checklist_atual.pode_acessar %}
+                                            <i class="fas fa-clock text-warning me-2"></i>
+                                        {% else %}
+                                            <i class="fas fa-lock text-muted me-2"></i>
+                                        {% endif %}
+                                        {{ nome_fase }}
+                                    </h6>
+                                    
+                                    {% if checklist_atual %}
+                                    <div class="progress mb-2" style="height: 8px;">
+                                        <div class="progress-bar {% if checklist_atual.concluido %}bg-success{% else %}bg-warning{% endif %}" 
+                                             style="width: {{ checklist_atual.progresso }}%"></div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">
+                                            {{ checklist_atual.itens_checados }}/{{ checklist_atual.total_itens }} itens
+                                        </small>
+                                        <small class="text-muted">
+                                            {{ checklist_atual.progresso }}% concluído
+                                        </small>
+                                    </div>
+                                    
+                                    <div class="mt-2">
+                                        {% if checklist_atual.pode_acessar %}
+                                        <a href="{% url 'checklist_etapa' kit_paciente.id fase %}" 
+                                           class="btn btn-primary btn-sm">
+                                            <i class="fas fa-play me-1"></i>Acessar
+                                        </a>
+                                        {% else %}
+                                        <button class="btn btn-secondary btn-sm" disabled>
+                                            <i class="fas fa-lock me-1"></i>Bloqueado
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Materiais do Kit -->
+    <div class="row g-4 mb-4 fade-in-up">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-boxes me-2"></i>Materiais do Kit ({{ kit_paciente.kit.materiais.count }} itens)
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Material</th>
+                                    <th>Categoria</th>
+                                    <th>Lote</th>
+                                    <th>Validade</th>
+                                    <th>QR Code</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for material in kit_paciente.kit.materiais.all %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ material.nome }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ material.categoria }}</span>
+                                    </td>
+                                    <td>{{ material.lote }}</td>
+                                    <td>
+                                        <span class="{% if material.validade < hoje %}text-danger{% else %}text-success{% endif %}">
+                                            {{ material.validade|date:"d/m/Y" }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <code class="text-muted">{{ material.codigo_qr }}</code>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-3">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                                        Nenhum material neste kit
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Codes -->
+    <div class="row g-4 mb-4 fade-in-up">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-qrcode me-2"></i>QR Codes
+                    </h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="text-primary mb-3">QR Code do Kit</h6>
+                                {% if kit_paciente.kit.qr_image %}
+                                <img src="{{ kit_paciente.kit.qr_image.url }}" 
+                                     class="img-fluid mb-2" 
+                                     alt="QR Code do Kit"
+                                     style="max-width: 200px;">
+                                {% else %}
+                                <div class="text-muted">
+                                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                                    <p class="mb-0">QR Code do kit não gerado</p>
+                                </div>
+                                {% endif %}
+                                <div class="mt-2">
+                                    <small class="text-muted">Código: {{ kit_paciente.kit.codigo_qr }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="text-info mb-3">QR Code do Processo</h6>
+                                <div class="text-muted">
+                                    <i class="fas fa-info-circle fa-2x mb-2"></i>
+                                    <p class="mb-0">QR Code para identificação do processo</p>
+                                    <p class="mb-2">
+                                        <code>KIT_PACIENTE_{{ kit_paciente.id }}</code>
+                                    </p>
+                                    <small class="text-muted">
+                                        Use este QR Code para iniciar o processo no sistema
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ações Rápidas -->
+    <div class="row g-4 fade-in-up">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-tools me-2"></i>Ações Rápidas
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <a href="{% url 'scan_qr_code' %}" 
+                               class="btn btn-primary btn-lg w-100">
+                                <i class="fas fa-qrcode me-2"></i>Escanear QR Code
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'relatorio_final' kit_paciente.id %}" 
+                               class="btn btn-success btn-lg w-100 {% if not kit_paciente.processo_concluido %}disabled{% endif %}">
+                                <i class="fas fa-file-pdf me-2"></i>Relatório Final
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-warning btn-lg w-100" 
+                                    onclick="window.print()">
+                                <i class="fas fa-print me-2"></i>Imprimir
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'dashboard_kit_paciente' %}" 
+                               class="btn btn-outline-secondary btn-lg w-100">
+                                <i class="fas fa-arrow-left me-2"></i>Voltar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animações de entrada
+    const elements = document.querySelectorAll('.fade-in-up');
+    elements.forEach((el, index) => {
+        setTimeout(() => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s ease';
+            
+            setTimeout(() => {
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+            }, 50);
+        }, index * 100);
+    });
+});
+</script>
+
+<style>
+/* Animações */
+.fade-in-up {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s ease;
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Progress bars */
+.progress {
+    background-color: #e9ecef;
+}
+
+/* Badges */
+.badge {
+    font-size: 0.8em;
+}
+
+/* QR Codes */
+.border {
+    border: 2px dashed #dee2e6 !important;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 0.5rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+}
+</style>
+
+{% endblock %}

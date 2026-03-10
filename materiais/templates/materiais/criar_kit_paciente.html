@@ -1,0 +1,212 @@
+{% extends 'materiais/base.html' %}
+{% block title %}Criar Novo Processo{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 fade-in-up">
+        <div>
+            <h2 class="mb-0">
+                <i class="fas fa-plus-circle me-2 text-primary"></i>Novo Processo Cirúrgico
+            </h2>
+            <p class="text-muted mb-0">Vincular paciente a kit cirúrgico</p>
+        </div>
+        <a href="{% url 'dashboard_kit_paciente' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Voltar
+        </a>
+    </div>
+
+    <!-- Formulário -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-xl-6 fade-in-up">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i>Criar Processo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Seleção de Paciente -->
+                        <div class="mb-3">
+                            <label for="{{ form.paciente.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-user me-1"></i>Paciente
+                            </label>
+                            {{ form.paciente }}
+                            {% if form.paciente.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.paciente.errors %}
+                                    <small class="text-danger">{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Seleção de Kit -->
+                        <div class="mb-3">
+                            <label for="{{ form.kit.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-briefcase me-1"></i>Kit Cirúrgico
+                            </label>
+                            {{ form.kit }}
+                            {% if form.kit.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.kit.errors %}
+                                    <small class="text-danger">{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Data da Cirurgia -->
+                        <div class="mb-4">
+                            <label for="{{ form.data_cirurgia.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-clock me-1"></i>Data e Hora da Cirurgia
+                            </label>
+                            {{ form.data_cirurgia }}
+                            {% if form.data_cirurgia.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.data_cirurgia.errors %}
+                                    <small class="text-danger">{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Selecione a data e hora prevista para a cirurgia
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'dashboard_kit_paciente' %}" class="btn btn-outline-secondary flex-fill">
+                                <i class="fas fa-times me-1"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary flex-fill">
+                                <i class="fas fa-save me-1"></i>Criar Processo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informações Adicionais -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-info">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle text-info me-2"></i>Informações Importantes
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-0">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-lightbulb me-2"></i>O que será criado?
+                        </h6>
+                        <p class="mb-2">
+                            Ao criar este processo, o sistema irá automaticamente:
+                        </p>
+                        <ul class="mb-0">
+                            <li><strong>Vincular</strong> o paciente ao kit selecionado</li>
+                            <li><strong>Criar</strong> 3 checklists (Pré, Intra, Pós)</li>
+                            <li><strong>Gerar</strong> itens automaticamente baseado nos materiais do kit</li>
+                            <li><strong>Habilitar</strong> o sistema de escaneamento QR Code</li>
+                        </ul>
+                        <hr>
+                        <small class="d-block">
+                            <strong>Fluxo:</strong> Pré-operatório → Intra-operatório → Pós-operatório
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animações de entrada
+    const elements = document.querySelectorAll('.fade-in-up');
+    elements.forEach((el, index) => {
+        setTimeout(() => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s ease';
+            
+            setTimeout(() => {
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+            }, 50);
+        }, index * 100);
+    });
+});
+</script>
+
+<style>
+/* Animações */
+.fade-in-up {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s ease;
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Formulário */
+.form-label {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.25);
+}
+
+/* Botões */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Alertas */
+.alert {
+    border: none;
+    border-radius: 8px;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 0.5rem;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+}
+</style>
+
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends 'materiais/base.html' %}
+{% block title %}Imprimir QR Codes{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">QR Codes para Impressão</h2>
+        <small class="text-muted">{{ checklist.get_fase_display }} - {{ checklist.kit.nome }}</small>
+    </div>
+    <div>
+        <button onclick="window.print()" class="btn btn-primary me-2">
+            <i class="fas fa-print me-1"></i> Imprimir
+        </button>
+        <a href="{% url 'detalhe_checklist' checklist.id %}" class="btn btn-link">
+            <i class="fas fa-arrow-left me-1"></i> Voltar
+        </a>
+    </div>
+</div>
+
+<div class="card p-4 shadow-sm">
+    <div class="mb-3">
+        <strong>Paciente:</strong> 
+        {% if checklist.paciente_prontuario %}
+            {{ checklist.paciente_prontuario }} - {{ checklist.paciente_nome|default:checklist.paciente }}
+        {% else %}
+            {{ checklist.paciente }}
+        {% endif %}
+        <br>
+        <strong>Cirurgia:</strong> {{ checklist.cirurgia }}
+        <br>
+        <strong>Data:</strong> {% now "d/m/Y H:i" %}
+    </div>
+
+    <div class="row">
+        {% for material in materiais %}
+        <div class="col-md-4 col-sm-6 mb-4">
+            <div class="card text-center p-3" style="height: 100%;">
+                <h6 class="mb-2">{{ material.nome }}</h6>
+                <div class="mb-2">
+                    {% if material.qr_image %}
+                        <img src="{{ material.qr_image.url }}" alt="QR Code" style="width: 120px; height: 120px;">
+                    {% else %}
+                        <div class="bg-light d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; margin: 0 auto;">
+                            <span class="text-muted">Sem QR</span>
+                        </div>
+                    {% endif %}
+                </div>
+                <small class="text-muted">
+                    <strong>Código:</strong><br>
+                    {{ material.codigo_qr }}<br>
+                    <strong>Lote:</strong> {{ material.lote }}<br>
+                    <strong>Validade:</strong> {{ material.validade|date:"d/m/Y" }}
+                </small>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- QR Code do Kit -->
+    {% if checklist.kit.qr_image %}
+    <div class="mt-4 pt-4 border-top">
+        <h5 class="text-center mb-3">QR Code do Kit Completo</h5>
+        <div class="text-center">
+            <img src="{{ checklist.kit.qr_image.url }}" alt="QR Code do Kit" style="width: 200px; height: 200px;">
+            <div class="mt-2">
+                <strong>{{ checklist.kit.nome }}</strong><br>
+                <small class="text-muted">{{ checklist.kit.codigo_qr }}</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    .card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    
+    .col-md-4, .col-sm-6 {
+        float: left;
+        width: 33.333%;
+    }
+    
+    @media (max-width: 768px) {
+        .col-sm-6 {
+            width: 50%;
+        }
+    }
+    
+    body {
+        font-size: 12px;
+    }
+    
+    .card {
+        border: 1px solid #000;
+        margin-bottom: 10px;
+    }
+}
+</style>
+
+{% endblock %}

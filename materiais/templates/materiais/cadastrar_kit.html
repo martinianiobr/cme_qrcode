@@ -1,0 +1,37 @@
+{% extends 'materiais/base.html' %}
+
+{% block title %}Cadastrar Kit{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">Cadastrar kit</h2>
+        <small class="text-muted">Defina nome, lacre e materiais que compõem o kit</small>
+    </div>
+    <a href="{% url 'lista_kits' %}" class="btn btn-link">
+        <i class="fas fa-arrow-left me-1"></i> Voltar para lista
+    </a>
+</div>
+
+<form method="post" class="card p-4 shadow-sm">
+    {% csrf_token %}
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+            {{ form.nome }}
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="{{ form.lacre.id_for_label }}">{{ form.lacre.label }}</label>
+            {{ form.lacre }}
+        </div>
+        <div class="col-12">
+            <label class="form-label" for="{{ form.materiais.id_for_label }}">{{ form.materiais.label }}</label>
+            {{ form.materiais }}
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary mt-3">
+        <i class="fas fa-save me-1"></i> Salvar
+    </button>
+</form>
+
+{% endblock %}

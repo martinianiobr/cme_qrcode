@@ -1,0 +1,477 @@
+{% extends 'materiais/base.html' %}
+{% block title %}Cadastrar Checklist{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-lg fade-in-up">
+                <div class="card-header bg-gradient-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-clipboard-check me-2"></i>Cadastrar Novo Checklist
+                        </h4>
+                        <a href="{% url 'lista_checklists' %}" class="btn btn-outline-light btn-sm">
+                            <i class="fas fa-arrow-left me-1"></i>Voltar
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" id="checklistForm">
+                        {% csrf_token %}
+                        
+                        <!-- Dados do Checklist -->
+                        <div class="section-header mb-4">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-cog me-2"></i>Dados do Checklist
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-7">
+                                    <label for="{{ form.kit.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-briefcase me-1 text-primary"></i>Kit Cirúrgico
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.kit }}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle text-info"></i>
+                                        Selecione o kit de materiais que será conferido
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <label for="{{ form.fase.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-clock me-1 text-primary"></i>Fase da Cirurgia
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.fase }}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle text-info"></i>
+                                        Indique se é pré, intra ou pós-cirurgia
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Busca Avançada de Pacientes AGHU -->
+                        <div class="section-header mb-4">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-search me-2"></i>Busca Avançada de Pacientes - AGHU
+                            </h5>
+                            
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label for="buscaNome" class="form-label fw-semibold">
+                                        <i class="fas fa-user me-1 text-primary"></i>Buscar por Nome
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-primary text-white">
+                                            <i class="fas fa-user"></i>
+                                        </span>
+                                        <input type="text" 
+                                               id="buscaNome" 
+                                               class="form-control" 
+                                               placeholder="Digite o nome do paciente..."
+                                               autocomplete="off">
+                                        <button class="btn btn-primary" type="button" onclick="buscarPacienteNome()">
+                                            <i class="fas fa-search me-1"></i>Buscar
+                                        </button>
+                                    </div>
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle text-info"></i>
+                                        Busca em tempo real no sistema AGHU (mínimo 3 caracteres)
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="buscaProntuario" class="form-label fw-semibold">
+                                        <i class="fas fa-id-card me-1 text-primary"></i>Buscar por Prontuário
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-primary text-white">
+                                            <i class="fas fa-id-card"></i>
+                                        </span>
+                                        <input type="number" 
+                                               id="buscaProntuario" 
+                                               class="form-control" 
+                                               placeholder="Digite o prontuário..."
+                                               autocomplete="off">
+                                        <button class="btn btn-primary" type="button" onclick="buscarPacienteProntuario()">
+                                            <i class="fas fa-search me-1"></i>Buscar
+                                        </button>
+                                    </div>
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle text-info"></i>
+                                        Busca exata por número de prontuário
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Resultados da Busca -->
+                            <div id="resultadosBusca" class="mt-3" style="display: none;">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>
+                                    Buscando pacientes...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dados do Paciente Selecionado -->
+                        <div class="section-header mb-4">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-user-injured me-2"></i>Dados do Paciente Vinculado
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="{{ form.prontuario.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-id-card me-1 text-primary"></i>Prontuário AGHU
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.prontuario }}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle text-info"></i>
+                                        Preenchido automaticamente pela busca ou manualmente
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ form.paciente.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-user me-1 text-primary"></i>Nome do Paciente
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.paciente }}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle text-info"></i>
+                                        Nome completo do paciente
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ form.cirurgia.id_for_label }}" class="form-label fw-semibold">
+                                        <i class="fas fa-procedures me-1 text-primary"></i>Cirurgia/Procedimento
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.cirurgia }}
+                                    <div class="form-text">
+                                        <i class="fas fa-info-circle text-info"></i>
+                                        Tipo de cirurgia ou procedimento
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                            <a href="{% url 'lista_checklists' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                            <div>
+                                <button type="reset" class="btn btn-outline-warning me-2">
+                                    <i class="fas fa-undo me-2"></i>Limpar Formulário
+                                </button>
+                                <button type="submit" class="btn btn-primary pulse">
+                                    <i class="fas fa-save me-2"></i>Salvar Checklist
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animações de entrada
+    const elements = document.querySelectorAll('.fade-in-up');
+    elements.forEach((el, index) => {
+        setTimeout(() => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s ease';
+            
+            setTimeout(() => {
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+            }, 50);
+        }, index * 100);
+    });
+
+    // Busca de pacientes
+    const buscaNome = document.getElementById('buscaNome');
+    const buscaProntuario = document.getElementById('buscaProntuario');
+    const prontuarioInput = document.getElementById('id_prontuario');
+    const pacienteInput = document.getElementById('id_paciente');
+    
+    // Debounce para busca por nome
+    let searchTimeout;
+    buscaNome.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const value = this.value.trim();
+        
+        if (value.length >= 3) {
+            searchTimeout = setTimeout(() => {
+                buscarPacienteNome();
+            }, 500);
+        } else {
+            document.getElementById('resultadosBusca').style.display = 'none';
+        }
+    });
+    
+    // Busca por prontuário ao pressionar Enter
+    buscaProntuario.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            buscarPacienteProntuario();
+        }
+    });
+});
+
+function buscarPacienteNome() {
+    const nome = document.getElementById('buscaNome').value.trim();
+    const resultadosDiv = document.getElementById('resultadosBusca');
+    
+    if (!nome) {
+        resultadosDiv.style.display = 'none';
+        return;
+    }
+    
+    resultadosDiv.style.display = 'block';
+    resultadosDiv.innerHTML = `
+        <div class="alert alert-info">
+            <i class="fas fa-spinner fa-spin me-2"></i>
+            Buscando pacientes por nome: "${nome}"...
+        </div>
+    `;
+    
+    // Chamada AJAX real para a API
+    fetch('{% url "buscar_pacientes_aghu" %}?termo=' + encodeURIComponent(nome) + '&tipo=nome')
+        .then(res => res.json())
+        .then(data => {
+            if (data.pacientes && data.pacientes.length > 0) {
+                let html = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>${data.pacientes.length} pacientes encontrados</strong> para "${nome}"
+                    </div>
+                    <div class="list-group" style="max-height: 300px; overflow-y: auto;">
+                `;
+                data.pacientes.forEach(paciente => {
+                    html += `
+                        <div class="list-group-item list-group-item-action" 
+                             onclick="selecionarPaciente(${paciente.prontuario}, '${paciente.nome.replace(/'/g, "\\'")}')"
+                             style="cursor: pointer;">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">${paciente.nome}</h6>
+                                <small class="text-primary">Prontuário: ${paciente.prontuario}</small>
+                            </div>
+                            ${paciente.data_internacao ? `<p class="mb-1"><small>Internação: ${paciente.data_internacao}</small></p>` : ''}
+                            ${paciente.nome_mae ? `<small><i class="fas fa-female me-1"></i>Mãe: ${paciente.nome_mae}</small><br>` : ''}
+                            <small class="text-muted">
+                                <i class="fas fa-mouse-pointer me-1"></i>Clique para selecionar este paciente
+                            </small>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                resultadosDiv.innerHTML = html;
+            } else {
+                resultadosDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Nenhum paciente encontrado para "${nome}"
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Erro na busca:', error);
+            resultadosDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    Erro ao buscar pacientes. Tente novamente.
+                </div>
+            `;
+        });
+}
+
+function buscarPacienteProntuario() {
+    const prontuario = document.getElementById('buscaProntuario').value.trim();
+    const resultadosDiv = document.getElementById('resultadosBusca');
+    
+    if (!prontuario) {
+        resultadosDiv.style.display = 'none';
+        return;
+    }
+    
+    resultadosDiv.style.display = 'block';
+    resultadosDiv.innerHTML = `
+        <div class="alert alert-info">
+            <i class="fas fa-spinner fa-spin me-2"></i>
+            Buscando paciente prontuário: ${prontuario}...
+        </div>
+    `;
+    
+    // Chamada AJAX real para a API
+    fetch('{% url "buscar_pacientes_aghu" %}?termo=' + prontuario + '&tipo=prontuario')
+        .then(res => res.json())
+        .then(data => {
+            if (data.pacientes && data.pacientes.length > 0) {
+                const paciente = data.pacientes[0];
+                resultadosDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Paciente encontrado</strong>
+                    </div>
+                    <div class="card border-success">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <h5 class="card-title text-primary">${paciente.nome}</h5>
+                                    <p class="card-text mb-2">
+                                        <strong>Prontuário:</strong> ${paciente.prontuario}<br>
+                                        ${paciente.data_internacao ? `<strong>Internação:</strong> ${paciente.data_internacao}<br>` : ''}
+                                        ${paciente.nome_mae ? `<strong>Mãe:</strong> ${paciente.nome_mae}<br>` : ''}
+                                        ${paciente.data_nascimento ? `<strong>Nascimento:</strong> ${paciente.data_nascimento}` : ''}
+                                    </p>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <button class="btn btn-primary btn-sm me-2" onclick="selecionarPaciente(${paciente.prontuario}, '${paciente.nome.replace(/'/g, "\\'")}')">
+                                        <i class="fas fa-check me-1"></i>Selecionar
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="limparBusca()">
+                                        <i class="fas fa-times me-1"></i>Cancelar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                resultadosDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Nenhum paciente encontrado com o prontuário ${prontuario}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Erro na busca:', error);
+            resultadosDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    Erro ao buscar paciente. Tente novamente.
+                </div>
+            `;
+        });
+}
+
+function selecionarPaciente(prontuario, nome) {
+    const prontuarioInput = document.getElementById('id_prontuario');
+    const pacienteInput = document.getElementById('id_paciente');
+    
+    prontuarioInput.value = prontuario;
+    pacienteInput.value = nome;
+    
+    // Limpa campos de busca
+    document.getElementById('buscaNome').value = '';
+    document.getElementById('buscaProntuario').value = '';
+    document.getElementById('resultadosBusca').style.display = 'none';
+    
+    // Feedback visual
+    showNotification('Paciente selecionado com sucesso!', 'success');
+    
+    // Foco no campo de cirurgia
+    document.getElementById('id_cirurgia').focus();
+}
+
+function limparBusca() {
+    document.getElementById('resultadosBusca').style.display = 'none';
+    document.getElementById('buscaNome').value = '';
+    document.getElementById('buscaProntuario').value = '';
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<style>
+.section-header {
+    position: relative;
+    padding-left: 1rem;
+}
+
+.section-header::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 30px;
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    border-radius: 2px;
+}
+
+.form-label {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.form-text {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+.card {
+    border: none;
+    border-radius: var(--radius-xl);
+}
+
+/* Animações */
+.fade-in-up {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s ease;
+}
+
+.fade-in-up.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Resultados da busca */
+.list-group-item {
+    transition: all 0.3s ease;
+}
+
+.list-group-item:hover {
+    background-color: rgba(0, 102, 204, 0.05);
+    transform: translateX(3px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 0.5rem;
+    }
+    
+    .card-body {
+        padding: 1.5rem;
+    }
+}
+</style>
+
+{% endblock %}

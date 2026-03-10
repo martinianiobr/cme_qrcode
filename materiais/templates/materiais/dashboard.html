@@ -1,0 +1,441 @@
+{% extends 'materiais/base.html' %}
+{% load static %}
+{% block title %}Dashboard CME{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Menu Lateral Flutuante -->
+    <div class="side-menu" id="sideMenu">
+        <div class="menu-toggle" id="menuToggle">
+            <i class="fas fa-plus"></i>
+        </div>
+        <div class="menu-content">
+            <h6 class="menu-title">Ações Rápidas</h6>
+            <div class="menu-items">
+                <a href="{% url 'cadastrar_material' %}" class="menu-item">
+                    <i class="fas fa-plus-circle me-2"></i>Novo Material
+                </a>
+                <a href="{% url 'cadastrar_kit' %}" class="menu-item">
+                    <i class="fas fa-layer-group me-2"></i>Novo Kit
+                </a>
+                <a href="{% url 'cadastrar_checklist' %}" class="menu-item">
+                    <i class="fas fa-clipboard me-2"></i>Novo Checklist
+                </a>
+                <button class="menu-item" onclick="scanQR()">
+                    <i class="fas fa-qrcode me-2"></i>Escanear QR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header Principal -->
+    <div class="row mb-4 fade-in-up">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-0">
+                        <i class="fas fa-hospital me-3 text-primary"></i>
+                        Centro de Material Esterilizado
+                    </h1>
+                    <p class="text-muted mb-0 mt-2">
+                        <i class="fas fa-user-circle me-1"></i>
+                        Bem-vindo(a), <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary" onclick="refreshData()">
+                        <i class="fas fa-sync-alt me-1"></i>Atualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards Grandes e Simplificados -->
+    <div class="row g-4 justify-content-center mb-4">
+        <!-- Card Materiais -->
+        <div class="col-md-4 mb-4 fade-in-up">
+            <div class="br-card category-tag-card-large hover-lift">
+                <div class="card-content p-0">
+                    <div class="dashboard-img-wrapper-large">
+                        <img src="{% static 'img/material.png' %}" draggable="false" class="dashboard-img" alt="Materiais" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                        <i class="fas fa-boxes dashboard-fallback-icon text-primary"></i>
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    <p class="text-up-03 title mt-2">Materiais</p>
+                    <p class="subtitle mt-1">Gerencie os materiais cadastrados</p>
+                    <p class="h2 mt-2">{{ total_materiais }}</p>
+                    <div class="bg-primary-02 my-3">
+                        <a class="br-button secondary small center" href="{% url 'lista_materiais' %}">
+                            <i class="fas fa-arrow-right me-1"></i>Acessar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Kits -->
+        <div class="col-md-4 mb-4 fade-in-up">
+            <div class="br-card category-tag-card-large hover-lift">
+                <div class="card-content p-0">
+                    <div class="dashboard-img-wrapper-large">
+                        <img src="{% static 'img/kit.png' %}" draggable="false" class="dashboard-img" alt="Kits" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                        <i class="fas fa-briefcase dashboard-fallback-icon text-success"></i>
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    <p class="text-up-03 title mt-2">Kits</p>
+                    <p class="subtitle mt-1">Visualize e cadastre kits</p>
+                    <p class="h2 mt-2">{{ total_kits }}</p>
+                    <div class="bg-primary-02 my-3">
+                        <a class="br-button secondary small center" href="{% url 'lista_kits' %}">
+                            <i class="fas fa-arrow-right me-1"></i>Acessar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Checklists -->
+        <div class="col-md-4 mb-4 fade-in-up">
+            <div class="br-card category-tag-card-large hover-lift">
+                <div class="card-content p-0">
+                    <div class="dashboard-img-wrapper-large">
+                        <img src="{% static 'img/checklist.png' %}" draggable="false" class="dashboard-img" alt="Checklists" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                        <i class="fas fa-clipboard-check dashboard-fallback-icon text-warning"></i>
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    <p class="text-up-03 title mt-2">Checklists</p>
+                    <p class="subtitle mt-1">Controle os checklists realizados</p>
+                    <p class="h2 mt-2">{{ total_checklists }}</p>
+                    <div class="bg-primary-02 my-3">
+                        <a class="br-button secondary small center" href="{% url 'lista_checklists' %}">
+                            <i class="fas fa-arrow-right me-1"></i>Acessar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animações de entrada
+    const elements = document.querySelectorAll('.fade-in-up');
+    elements.forEach((el, index) => {
+        setTimeout(() => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'all 0.6s ease';
+            
+            setTimeout(() => {
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+            }, 50);
+        }, index * 100);
+    });
+
+    // Menu lateral hover
+    const sideMenu = document.getElementById('sideMenu');
+    const menuToggle = document.getElementById('menuToggle');
+    
+    sideMenu.addEventListener('mouseenter', function() {
+        this.classList.add('expanded');
+        menuToggle.innerHTML = '<i class="fas fa-times"></i>';
+    });
+    
+    sideMenu.addEventListener('mouseleave', function() {
+        this.classList.remove('expanded');
+        menuToggle.innerHTML = '<i class="fas fa-plus"></i>';
+    });
+});
+
+function refreshData() {
+    const cards = document.querySelectorAll('.br-card');
+    cards.forEach(card => {
+        card.classList.add('loading');
+    });
+
+    setTimeout(() => {
+        cards.forEach(card => {
+            card.classList.remove('loading');
+        });
+        
+        showNotification('Dados atualizados com sucesso!', 'success');
+    }, 1000);
+}
+
+function scanQR() {
+    alert('Funcionalidade de escaneamento em desenvolvimento');
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<style>
+/* Animações simples */
+.fade-in-up {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s ease;
+}
+
+.fade-in-up.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Cards simples */
+.br-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.br-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.category-tag-card-large {
+    width: 100%;
+    min-height: 450px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.dashboard-img-wrapper-large {
+    position: relative;
+    width: 100%;
+    flex: 0 0 auto;
+    height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    overflow: hidden;
+    border-radius: 8px 8px 0 0;
+}
+
+.dashboard-img-wrapper-large .dashboard-img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.dashboard-img-wrapper-large .dashboard-fallback-icon {
+    position: absolute;
+    font-size: 5rem;
+    display: none;
+}
+
+.card-footer {
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    padding: 2rem;
+    text-align: center;
+}
+
+.title {
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.subtitle {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.text-up-03 {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.bg-primary-02 {
+    background-color: rgba(0, 102, 204, 0.1);
+    border-radius: 6px;
+    padding: 0.75rem;
+}
+
+.br-button {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border: 2px solid #0066CC;
+    color: #0066CC;
+    background-color: transparent;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+}
+
+.br-button.secondary {
+    background-color: #0066CC;
+    color: white;
+}
+
+.br-button.secondary:hover {
+    background-color: #0052A3;
+    border-color: #0052A3;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 102, 204, 0.3);
+}
+
+.br-button.small {
+    font-size: 0.9rem;
+    padding: 8px 16px;
+    min-height: 36px;
+}
+
+.br-button.center {
+    display: flex;
+    text-align: center;
+    width: 100%;
+}
+
+/* Menu Lateral */
+.side-menu {
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.menu-toggle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #0066CC;
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+    margin: 0 auto;
+}
+
+.menu-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+}
+
+.menu-content {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    padding: 1rem;
+    margin-top: 1rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(20px);
+    transition: all 0.3s ease;
+    min-width: 200px;
+}
+
+.side-menu.expanded .menu-content {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+}
+
+.menu-title {
+    color: #0066CC;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.menu-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.menu-item {
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    text-decoration: none;
+    color: #212529;
+    transition: all 0.3s ease;
+    border: none;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+}
+
+.menu-item:hover {
+    background: rgba(0, 102, 204, 0.1);
+    color: #0066CC;
+    transform: translateX(-3px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .side-menu {
+        right: 10px;
+    }
+    
+    .menu-content {
+        right: 0;
+        left: auto;
+    }
+    
+    .category-tag-card-large {
+        min-height: 380px;
+    }
+    
+    .dashboard-img-wrapper-large {
+        height: 220px;
+    }
+    
+    .card-footer {
+        padding: 1.5rem;
+    }
+    
+    .title {
+        font-size: 1rem;
+    }
+}
+</style>
+
+{% endblock %}

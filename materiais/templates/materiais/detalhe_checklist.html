@@ -1,0 +1,342 @@
+{% extends 'materiais/base.html' %}
+
+{% block title %}Detalhe Checklist{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">Checklist: {{ checklist.get_fase_display }} - {{ checklist.kit.nome }}</h2>
+        <p class="mb-0">
+            Paciente: 
+            {% if checklist.paciente_prontuario %}
+                <strong>{{ checklist.paciente_prontuario }}</strong> - {{ checklist.paciente_nome|default:checklist.paciente }}
+            {% else %}
+                {{ checklist.paciente }}
+            {% endif %}
+            | Cirurgia: {{ checklist.cirurgia }}
+        </p>
+    </div>
+    <div>
+        <a href="{% url 'imprimir_qrcodes' checklist.id %}" class="btn btn-success me-2 no-print">
+            <i class="fas fa-print me-1"></i> Imprimir QR Codes
+        </a>
+        <a href="{% url 'lista_checklists' %}" class="btn btn-link no-print">
+            <i class="fas fa-arrow-left me-1"></i> Voltar
+        </a>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-8">
+        <div class="card p-3">
+            <label class="form-label"><strong>Progresso</strong></label>
+            <div class="progress">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" 
+                     style="width: {{ percent }}%" 
+                     aria-valuenow="{{ checked }}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="{{ total }}"
+                     id="progressBar">
+                    {{ checked }}/{{ total }}
+                </div>
+            </div>
+            <small class="text-muted">
+                {% if checked == total %}
+                    <span class="text-success fw-bold">✓ Checklist completo!</span>
+                {% else %}
+                    Faltam {{ total|add:"-"|add:checked }} itens
+                {% endif %}
+            </small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3 no-print">
+            <label class="form-label"><strong>Escanear QR Code</strong></label>
+            <div class="input-group">
+                <input id="qrInput" class="form-control" placeholder="Código do material">
+                <button id="sendQr" class="btn btn-primary">
+                    <i class="fas fa-qrcode"></i>
+                </button>
+            </div>
+            <div id="qrResult" class="mt-2"></div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Itens do Checklist</h5>
+            <div class="d-flex align-items-center">
+                <!-- Indicador de fases -->
+                <div class="btn-group btn-group-sm me-3" role="group">
+                    <button type="button" class="btn {% if checklist.fase == 'pre' %}btn-primary{% else %}btn-outline-secondary{% endif %}" 
+                            {% if checklist.fase != 'pre' %}disabled{% endif %}>
+                        <i class="fas fa-clipboard-list"></i> Pré-cirurgia
+                    </button>
+                    <button type="button" class="btn {% if checklist.fase == 'intra' %}btn-primary{% elif checklist.fase == 'pre' and checklist.concluido %}btn-success{% else %}btn-outline-secondary{% endif %}" 
+                            {% if checklist.fase != 'intra' %}disabled{% endif %}>
+                        <i class="fas fa-procedures"></i> Intraoperatório
+                    </button>
+                    <button type="button" class="btn {% if checklist.fase == 'pos' %}btn-primary{% elif checklist.fase != 'pos' %}btn-outline-secondary{% endif %}" 
+                            {% if checklist.fase != 'pos' %}disabled{% endif %}>
+                        <i class="fas fa-bed"></i> Pós-cirurgia
+                    </button>
+                </div>
+                
+                <!-- Status de conclusão -->
+                {% if checklist.concluido %}
+                    <span class="badge bg-success">
+                        <i class="fas fa-check-circle"></i> Concluído
+                    </span>
+                {% else %}
+                    <span class="badge bg-warning">
+                        <i class="fas fa-clock"></i> Em andamento
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th width="50px">Status</th>
+                        <th>Material</th>
+                        <th>Lote</th>
+                        <th>Validade</th>
+                        <th>Data Conferência</th>
+                    </tr>
+                </thead>
+                <tbody id="checklistTableBody">
+                    {% for item in itens %}
+                    <tr class="{% if item.conferido %}table-success{% else %}table-warning{% endif %}" 
+                        data-material-id="{{ item.material.id }}"
+                        data-checklist-item-id="{{ item.id }}">
+                        <td class="text-center">
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       {% if item.conferido %}checked{% endif %}
+                                       {% if item.conferido %}disabled{% endif %}
+                                       onchange="marcarItem(this, {{ item.material.id }}, {{ item.id }})">
+                                <label class="form-check-label">
+                                    {% if item.conferido %}
+                                        <span class="text-success fw-bold">✓</span>
+                                    {% endif %}
+                                </label>
+                            </div>
+                        </td>
+                        <td>
+                            <strong>{{ item.material.nome }}</strong><br>
+                            <small class="text-muted">{{ item.material.codigo_qr }}</small>
+                        </td>
+                        <td>{{ item.material.lote }}</td>
+                        <td>
+                            {% if item.material.validade < hoje %}
+                                <span class="text-danger">{{ item.material.validade|date:"d/m/Y" }}</span>
+                            {% else %}
+                                {{ item.material.validade|date:"d/m/Y" }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.conferido %}
+                                {{ item.data_conferencia|date:"d/m/Y H:i" }}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+const checklistId = {{ checklist.id }};
+const totalItens = {{ total }};
+let qrInputFocused = false;
+
+// Foco automático no input QR
+document.addEventListener('DOMContentLoaded', function() {
+    const qrInput = document.getElementById('qrInput');
+    qrInput.focus();
+    
+    // Mantém foco no input QR
+    qrInput.addEventListener('blur', function() {
+        setTimeout(() => {
+            if (!qrInputFocused) {
+                qrInput.focus();
+            }
+        }, 100);
+    });
+    
+    qrInput.addEventListener('focus', function() {
+        qrInputFocused = true;
+    });
+    
+    qrInput.addEventListener('blur', function() {
+        qrInputFocused = false;
+    });
+});
+
+function enviarCodigo() {
+    const input = document.getElementById('qrInput');
+    const codigo = input.value.trim();
+    if (!codigo) return;
+    
+    const resultDiv = document.getElementById('qrResult');
+    resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Processando...';
+    
+    fetch('{% url "scan_qr" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            codigo: codigo,
+            checklist_id: checklistId
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            resultDiv.innerHTML = '<div class="alert alert-success py-2">✓ Item conferido</div>';
+            
+            // Atualiza a tabela sem recarregar
+            if (data.tipo === 'material') {
+                // Busca qual material foi conferido
+                const rows = document.querySelectorAll('#checklistTableBody tr');
+                rows.forEach(row => {
+                    const codigoQr = row.querySelector('small.text-muted')?.textContent;
+                    if (codigoQr === codigo) {
+                        // Atualiza a linha
+                        row.classList.remove('table-warning');
+                        row.classList.add('table-success');
+                        
+                        const checkbox = row.querySelector('input[type="checkbox"]');
+                        const statusCell = row.querySelector('.form-check-label');
+                        const dataCell = row.cells[4];
+                        
+                        checkbox.checked = true;
+                        checkbox.disabled = true;
+                        statusCell.innerHTML = '<span class="text-success fw-bold">✓</span>';
+                        dataCell.textContent = new Date().toLocaleString('pt-BR');
+                        
+                        // Atualiza progresso
+                        atualizarProgresso();
+                    }
+                });
+            }
+            
+            // Limpa input e mantém foco
+            input.value = '';
+            setTimeout(() => input.focus(), 100);
+            
+            // Limpa mensagem de sucesso
+            setTimeout(() => {
+                resultDiv.innerHTML = '';
+            }, 2000);
+            
+        } else if (data.error) {
+            resultDiv.innerHTML = '<div class="alert alert-danger py-2">✗ ' + data.error + '</div>';
+            setTimeout(() => {
+                resultDiv.innerHTML = '';
+                input.value = '';
+                input.focus();
+            }, 3000);
+        }
+    })
+    .catch(error => {
+        resultDiv.innerHTML = '<div class="alert alert-danger py-2">Erro de comunicação</div>';
+        console.error('Error:', error);
+    });
+}
+
+function marcarItem(checkbox, materialId, itemId) {
+    if (!checkbox.checked) return; // Só permite marcar, não desmarcar
+    
+    fetch('{% url "scan_qr" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            codigo: document.querySelector(`tr[data-material-id="${materialId}"] small.text-muted`).textContent,
+            checklist_id: checklistId
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            checkbox.disabled = true;
+            const row = checkbox.closest('tr');
+            row.classList.remove('table-warning');
+            row.classList.add('table-success');
+            
+            const statusCell = row.querySelector('.form-check-label');
+            const dataCell = row.cells[4];
+            
+            statusCell.innerHTML = '<span class="text-success fw-bold">✓</span>';
+            dataCell.textContent = new Date().toLocaleString('pt-BR');
+            
+            atualizarProgresso();
+        } else {
+            checkbox.checked = false;
+            alert('Erro: ' + (data.error || 'Falha ao marcar item'));
+        }
+    })
+    .catch(error => {
+        checkbox.checked = false;
+        console.error('Error:', error);
+        alert('Erro de comunicação');
+    });
+}
+
+function atualizarProgresso() {
+    const checkedRows = document.querySelectorAll('#checklistTableBody input[type="checkbox"]:checked');
+    const checked = checkedRows.length;
+    const percent = Math.round((checked / totalItens) * 100);
+    
+    const progressBar = document.getElementById('progressBar');
+    progressBar.style.width = percent + '%';
+    progressBar.setAttribute('aria-valuenow', checked);
+    progressBar.textContent = checked + '/' + totalItens;
+    
+    if (checked === totalItens) {
+        progressBar.classList.remove('progress-bar-animated');
+        progressBar.classList.add('bg-success');
+        
+        // Mostra mensagem de conclusão
+        const resultDiv = document.getElementById('qrResult');
+        resultDiv.innerHTML = '<div class="alert alert-success py-2">🎉 Checklist completo! Todos os itens foram conferidos.</div>';
+    }
+}
+
+// Event listeners
+document.getElementById('sendQr').addEventListener('click', enviarCodigo);
+
+document.getElementById('qrInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        enviarCodigo();
+    }
+});
+
+// Atalhos de teclado
+document.addEventListener('keydown', function(e) {
+    // Foco rápido no input QR com Ctrl+Q
+    if (e.ctrlKey && e.key === 'q') {
+        e.preventDefault();
+        document.getElementById('qrInput').focus();
+    }
+});
+</script>
+
+{% endblock %}

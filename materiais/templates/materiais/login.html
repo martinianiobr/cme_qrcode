@@ -1,0 +1,28 @@
+{% extends 'materiais/base.html' %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-center">
+    <div class="card p-4 shadow-sm card-login w-100" style="max-width: 420px;">
+        <div class="card-header border-0 bg-white mb-3 text-center">
+            <h2 class="card-title mb-1">Acesso ao CME</h2>
+            <p class="card-subtitle text-muted">Faça login para acessar o sistema</p>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                {{ form.username.label_tag }}
+                {{ form.username }}
+            </div>
+            <div class="mb-3">
+                {{ form.password.label_tag }}
+                {{ form.password }}
+            </div>
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-sign-in-alt me-1"></i> Entrar
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

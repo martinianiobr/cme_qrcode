@@ -1,0 +1,10 @@
+{% extends 'materiais/base.html' %}
+{% block title %}Logout{% endblock %}
+
+{% block content %}
+<div class="text-center mt-5">
+    <h2>Você saiu do sistema</h2>
+    <p class="lead">Até logo, {{ request.user.username }}!</p>
+    <a href="{% url 'login' %}" class="btn btn-primary mt-3">Fazer login novamente</a>
+</div>
+{% endblock %}
