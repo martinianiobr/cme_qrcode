@@ -7,15 +7,28 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4 fade-in-up">
         <div>
-            <h2 class="mb-0">
+            <h2 class="mb-0 page-title">
                 <i class="fas fa-boxes me-2 text-primary"></i>Materiais Esterilizados
             </h2>
-            <p class="text-muted mb-0">Gerencie o cadastro e controle de materiais</p>
+            <p class="text-muted mb-0">Catálogo base do sistema com cadastro manual apenas para contingência</p>
         </div>
         <div>
-            <a href="{% url 'cadastrar_material' %}" class="btn btn-primary pulse">
-                <i class="fas fa-plus-circle me-2"></i>Novo Material
+            <a href="{% url 'cadastrar_material' %}" class="btn btn-primary">
+                <i class="fas fa-plus-circle me-2"></i>Cadastro de Contingência
             </a>
+        </div>
+    </div>
+
+    <div class="alert alert-info fade-in-up" role="alert">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <strong>Catálogo embutido ativo.</strong> Os materiais padrão do CME já ficam disponíveis no sistema.
+                Use cadastro manual apenas quando um item ainda não existir no catálogo base.
+            </div>
+            <div class="d-flex gap-2">
+                <span class="badge bg-primary">Sistema: {{ materiais_sistema_count }}</span>
+                <span class="badge bg-secondary">Contingência: {{ materiais_contingencia_count }}</span>
+            </div>
         </div>
     </div>
 
@@ -27,8 +40,8 @@
                     <label for="search" class="form-label fw-semibold">
                         <i class="fas fa-search me-1 text-primary"></i>Buscar Material
                     </label>
-                    <div class="input-group input-group-lg">
-                        <span class="input-group-text bg-primary text-white">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-secondary border-end-0">
                             <i class="fas fa-search"></i>
                         </span>
                         <input type="text" 
@@ -112,6 +125,15 @@
                     <h5 class="card-title text-primary mb-3">
                         {{ material.nome }}
                     </h5>
+                    <div class="mb-3 d-flex flex-wrap gap-2">
+                        {% if material.codigo_catalogo %}
+                        <span class="badge bg-dark">{{ material.codigo_catalogo }}</span>
+                        {% endif %}
+                        <span class="badge {% if material.origem_cadastro == 'sistema' %}bg-primary{% else %}bg-secondary{% endif %}">
+                            {{ material.get_origem_cadastro_display }}
+                        </span>
+                        <span class="badge bg-info text-dark">{{ material.get_classificacao_processamento_display }}</span>
+                    </div>
                     
                     <!-- Informações Principais -->
                     <div class="row g-2 mb-3">
@@ -120,10 +142,33 @@
                             <strong>{{ material.categoria|default:"-" }}</strong>
                         </div>
                         <div class="col-6">
+                            <small class="text-muted d-block">Tipo</small>
+                            <strong>{{ material.tipo|default:"-" }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block">Tamanho</small>
+                            <strong>{{ material.tamanho|default:"-" }}</strong>
+                        </div>
+                        <div class="col-6">
                             <small class="text-muted d-block">Lote</small>
                             <strong>{{ material.lote }}</strong>
                         </div>
                     </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Composição</small>
+                        <strong>{{ material.material_composicao|default:"-" }}</strong>
+                    </div>
+
+                    {% if material.uso_observacao %}
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Uso / Observação</small>
+                        <small>{{ material.uso_observacao }}</small>
+                    </div>
+                    {% endif %}
 
                     <!-- Validade e Estoque -->
                     <div class="row g-2 mb-3">
@@ -204,11 +249,11 @@
                     {% if request.GET.q %}
                     Não há materiais correspondentes à busca "<strong>{{ request.GET.q }}</strong>"
                     {% else %}
-                    Comece cadastrando seu primeiro material no sistema
+                    O catálogo ainda não foi carregado nesta base
                     {% endif %}
                 </p>
                 <a href="{% url 'cadastrar_material' %}" class="btn btn-primary mt-3">
-                    <i class="fas fa-plus-circle me-2"></i>Cadastrar Primeiro Material
+                    <i class="fas fa-plus-circle me-2"></i>Cadastrar Material de Contingência
                 </a>
             </div>
         </div>

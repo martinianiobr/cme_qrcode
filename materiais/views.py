@@ -1,6 +1,10 @@
+# legacy views retained for backward compatibility; prefer
+# the newer logic in views_kitpaciente.py when possible.
+# Eventually these functions should be removed once all consumers have
+# migrated to the KitPaciente workflow.
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import MaterialForm, KitForm, ChecklistForm
-from .models import Material, Kit, Checklist, ChecklistItem, LeituraQR
+from .forms import MaterialForm, KitForm, ChecklistForm, ESPECIALIDADES_PROCEDIMENTOS
+from .models import Material, Kit, Checklist, ChecklistItem, LeituraQR, KitPaciente, Paciente
 from django.core.files.base import ContentFile
 from io import BytesIO
 from django.contrib.auth.decorators import login_required
@@ -15,6 +19,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 
 from .aghu_service import buscar_paciente_por_prontuario, buscar_pacientes_por_nome
+from .material_catalog import ensure_system_material_catalog
 
 
 
@@ -26,11 +31,24 @@ class MaterialListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
+        ensure_system_material_catalog()
         qs = super().get_queryset()
         q = self.request.GET.get('q')
         if q:
-            qs = (qs.filter(nome__icontains=q) | qs.filter(codigo_qr__icontains=q)).distinct()
+            qs = (
+                qs.filter(nome__icontains=q)
+                | qs.filter(codigo_qr__icontains=q)
+                | qs.filter(codigo_catalogo__icontains=q)
+                | qs.filter(tipo__icontains=q)
+            ).distinct()
         return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['hoje'] = timezone.now().date()
+        context['materiais_sistema_count'] = Material.objects.filter(origem_cadastro='sistema').count()
+        context['materiais_contingencia_count'] = Material.objects.filter(origem_cadastro='contingencia').count()
+        return context
 
 class MaterialCreateView(LoginRequiredMixin, CreateView):
     model = Material
@@ -38,7 +56,12 @@ class MaterialCreateView(LoginRequiredMixin, CreateView):
     template_name = 'materiais/cadastrar_material.html'
     success_url = reverse_lazy('lista_materiais')
 
+    def dispatch(self, request, *args, **kwargs):
+        ensure_system_material_catalog()
+        return super().dispatch(request, *args, **kwargs)
+
     def form_valid(self, form):
+        form.instance.origem_cadastro = 'contingencia'
         messages.success(self.request, 'Material cadastrado com sucesso.')
         return super().form_valid(form)
 
@@ -54,7 +77,13 @@ class KitListView(LoginRequiredMixin, ListView):
         qs = super().get_queryset()
         q = self.request.GET.get('q')
         if q:
-            qs = qs.filter(nome__icontains=q)
+            qs = qs.filter(
+                nome__icontains=q
+            ) | qs.filter(
+                especialidade__icontains=q
+            ) | qs.filter(
+                procedimento_cirurgico__icontains=q
+            )
         return qs
 
 class KitCreateView(LoginRequiredMixin, CreateView):
@@ -63,9 +92,39 @@ class KitCreateView(LoginRequiredMixin, CreateView):
     template_name = 'materiais/cadastrar_kit.html'
     success_url = reverse_lazy('lista_kits')
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        import json
+        ctx['esp_proc_map'] = json.dumps(ESPECIALIDADES_PROCEDIMENTOS)
+        paciente_id = self.request.GET.get('paciente_id')
+        if paciente_id:
+            try:
+                paciente = Paciente.objects.get(pk=paciente_id)
+                ctx['paciente_nome'] = paciente.nome
+                ctx['paciente_prontuario'] = paciente.prontuario
+            except Paciente.DoesNotExist:
+                pass
+        return ctx
+
     def form_valid(self, form):
+        import uuid
+        from django.utils import timezone as tz
+        form.instance.criado_por = self.request.user
+        if not form.instance.lacre:
+            sufixo = uuid.uuid4().hex[:6].upper()
+            form.instance.lacre = f"LC-{tz.now().strftime('%Y%m%d')}-{sufixo}"
+        response = super().form_valid(form)
         messages.success(self.request, 'Kit cadastrado com sucesso.')
-        return super().form_valid(form)
+        return response
+
+    def get_success_url(self):
+        if self.request.GET.get('return_to') == 'criar_processo':
+            paciente_id = self.request.GET.get('paciente_id')
+            params = f"kit_id={self.object.pk}"
+            if paciente_id:
+                params += f"&paciente_id={paciente_id}"
+            return f"{reverse_lazy('criar_kit_paciente')}?{params}"
+        return str(self.success_url)
 
 
 # ------------------ CHECKLISTS ------------------
@@ -98,21 +157,10 @@ class ChecklistCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         # assign current user before saving
         checklist = form.save(commit=False)
-
-        prontuario = form.cleaned_data.get('prontuario')
-        if prontuario:
-            dados = buscar_paciente_por_prontuario(prontuario)
-            if dados:
-                checklist.paciente_prontuario = dados["prontuario"]
-                checklist.paciente_nome = dados["nome"]
-                checklist.paciente = dados["nome"]
-            else:
-                messages.warning(self.request, 'Prontuário não encontrado no AGHU. Checklist será salvo apenas com o nome informado.')
-
-        checklist.conferido_por = self.request.user
+        checklist.usuario_responsavel = self.request.user
         checklist.save()
-        # prepopulate items from the kit
-        for mat in checklist.kit.materiais.all():
+        # prepopulate items from the related kit_paciente->kit
+        for mat in checklist.kit_paciente.kit.materiais.all():
             ChecklistItem.objects.get_or_create(checklist=checklist, material=mat)
         messages.success(self.request, 'Checklist criado com sucesso.')
         return redirect(self.success_url)
@@ -138,12 +186,7 @@ def detalhe_checklist(request, pk):
 
 @login_required
 def dashboard(request):
-    data = {
-        'total_materiais': Material.objects.count(),
-        'total_kits': Kit.objects.count(),
-        'total_checklists': Checklist.objects.count(),
-    }
-    return render(request, 'materiais/dashboard.html', data)
+    return redirect('dashboard_kit_paciente')
 
 
 @csrf_exempt
@@ -232,31 +275,32 @@ def scan_qr(request):
         
         return JsonResponse({'success': True, 'tipo': 'material'})
 
+# legacy search view left here only for reference; modern code lives in views_kitpaciente.
+# The URLpattern in urls.py now points to the implementation in views_kitpaciente,
+# so this helper is no longer used.
 
-@login_required
-def buscar_pacientes_aghu(request):
-    """
-    API para buscar pacientes no AGHU por nome ou prontuário
-    """
-    termo = request.GET.get('termo', '').strip()
-    tipo = request.GET.get('tipo', 'nome')  # 'nome' ou 'prontuario'
-    
-    if not termo:
-        return JsonResponse({'error': 'Termo de busca não informado'}, status=400)
-    
-    try:
-        if tipo == 'prontuario':
-            prontuario = int(termo)
-            paciente = buscar_paciente_por_prontuario(prontuario)
-            if paciente:
-                return JsonResponse({'pacientes': [paciente]})
-            else:
-                return JsonResponse({'pacientes': []})
-        else:
-            pacientes = buscar_pacientes_por_nome(termo, limite=10)
-            return JsonResponse({'pacientes': pacientes})
-    except Exception as e:
-        return JsonResponse({'error': f'Erro na busca: {str(e)}'}, status=500)
+# def buscar_pacientes_aghu(request):
+#     """
+#     Antiga API para buscar pacientes no AGHU por nome ou prontuário.
+#     Isso permanece comentado por compatibilidade de histórico, mas não é
+#     referenciado diretamente em nenhum template/URL após a mudança.
+#     """
+#     termo = request.GET.get('term', '').strip() or request.GET.get('termo', '').strip()
+#     tipo = request.GET.get('tipo', 'nome')  # 'nome' ou 'prontuario'
+#     
+#     if not termo:
+#         return JsonResponse({'pacientes': []})
+#     
+#     try:
+#         if tipo == 'prontuario':
+#             prontuario = int(termo)
+#             paciente = buscar_paciente_por_prontuario(prontuario)
+#             return JsonResponse({'pacientes': [paciente] if paciente else []})
+#         else:
+#             pacientes = buscar_pacientes_por_nome(termo, limite=10)
+#             return JsonResponse({'pacientes': pacientes})
+#     except Exception as e:
+#         return JsonResponse({'error': f'Erro na busca: {str(e)}'}, status=500)
 
 
 @login_required

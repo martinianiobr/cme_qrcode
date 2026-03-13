@@ -3,35 +3,316 @@
 {% block title %}Cadastrar Kit{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h2 class="mb-0">Cadastrar kit</h2>
-        <small class="text-muted">Defina nome, lacre e materiais que compõem o kit</small>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+        <div>
+            <h2 class="mb-1 page-title cadastrar-kit-title">Cadastrar kit</h2>
+            <small class="cadastrar-kit-subtitle">Monte o kit conforme a cirurgia. Depois, vincule ao paciente na criação do processo.</small>
+            {% if paciente_nome %}
+            <div class="mt-1">
+                <span class="badge bg-info text-dark">
+                    <i class="fas fa-user me-1"></i>Referência: {{ paciente_nome }} — Pront. {{ paciente_prontuario }}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+        <a href="{% url 'lista_kits' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Voltar para lista
+        </a>
     </div>
-    <a href="{% url 'lista_kits' %}" class="btn btn-link">
-        <i class="fas fa-arrow-left me-1"></i> Voltar para lista
-    </a>
+
+    <form method="post" class="card shadow-sm border-0">
+        {% csrf_token %}
+        <div class="card-body p-4">
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                    <div>{{ error }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="row g-3 mb-4">
+                <!-- Nome do kit -->
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+                    {{ form.nome }}
+                    {% if form.nome.errors %}
+                        <div class="invalid-feedback d-block">{{ form.nome.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Lacre (gerado automaticamente) -->
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.lacre.id_for_label }}">
+                        {{ form.lacre.label }}
+                        <span class="badge bg-secondary ms-1" style="font-size:.7rem">Auto</span>
+                    </label>
+                    <div class="input-group">
+                        {{ form.lacre }}
+                        <button type="button" class="btn btn-outline-secondary" id="btn-gerar-lacre" title="Gerar novo lacre">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted">Gerado automaticamente; você pode editar se necessário.</small>
+                    {% if form.lacre.errors %}
+                        <div class="invalid-feedback d-block">{{ form.lacre.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Especialidade (Select) -->
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.especialidade.id_for_label }}">{{ form.especialidade.label }}</label>
+                    {{ form.especialidade }}
+                    {% if form.especialidade.errors %}
+                        <div class="invalid-feedback d-block">{{ form.especialidade.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+
+                <!-- Procedimento cirúrgico (Select cascata) -->
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.procedimento_cirurgico.id_for_label }}">{{ form.procedimento_cirurgico.label }}</label>
+                    {{ form.procedimento_cirurgico }}
+                    <small class="text-muted" id="hint-procedimento">Selecione uma especialidade primeiro.</small>
+                    {% if form.procedimento_cirurgico.errors %}
+                        <div class="invalid-feedback d-block">{{ form.procedimento_cirurgico.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card border">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <strong>Materiais do kit</strong>
+                        <small class="text-muted d-block">Marque os itens que farão parte do kit</small>
+                    </div>
+                    <span class="badge bg-primary" id="materiais-selecionados">0 selecionado(s)</span>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-8">
+                            <input type="text" id="filtro-materiais" class="form-control" placeholder="Filtrar por categoria, nome ou tipo...">
+                        </div>
+                        <div class="col-md-4 d-flex gap-2 justify-content-md-end">
+                            <button type="button" id="selecionar-todos" class="btn btn-outline-primary btn-sm">Selecionar todos</button>
+                            <button type="button" id="limpar-selecao" class="btn btn-outline-secondary btn-sm">Limpar</button>
+                        </div>
+                    </div>
+
+                    <div id="materiais-container" class="materiais-scroll border rounded p-3">
+                        {% for checkbox in form.materiais %}
+                        <label class="material-row" data-search="{{ checkbox.choice_label|lower }}">
+                            <span class="material-check">{{ checkbox.tag }}</span>
+                            <span class="material-label">{{ checkbox.choice_label }}</span>
+                        </label>
+                        {% empty %}
+                        <div class="text-muted">Nenhum material disponível para seleção.</div>
+                        {% endfor %}
+                    </div>
+
+                    {% if form.materiais.errors %}
+                        <div class="invalid-feedback d-block mt-2">{{ form.materiais.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer bg-white d-flex justify-content-end gap-2 border-0 pt-0 pb-4 px-4">
+            <a href="{% url 'lista_kits' %}" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-1"></i>Salvar kit
+            </button>
+        </div>
+    </form>
 </div>
 
-<form method="post" class="card p-4 shadow-sm">
-    {% csrf_token %}
-    <div class="row g-3">
-        <div class="col-md-6">
-            <label class="form-label" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
-            {{ form.nome }}
-        </div>
-        <div class="col-md-6">
-            <label class="form-label" for="{{ form.lacre.id_for_label }}">{{ form.lacre.label }}</label>
-            {{ form.lacre }}
-        </div>
-        <div class="col-12">
-            <label class="form-label" for="{{ form.materiais.id_for_label }}">{{ form.materiais.label }}</label>
-            {{ form.materiais }}
-        </div>
-    </div>
-    <button type="submit" class="btn btn-primary mt-3">
-        <i class="fas fa-save me-1"></i> Salvar
-    </button>
-</form>
+<script>
+// Mapa especialidade → procedimentos (injetado pelo servidor)
+const ESP_PROC_MAP = {{ esp_proc_map|safe }};
+
+// Dados do paciente de referência (quando vindo do fluxo novo processo)
+const PACIENTE_NOME = "{{ paciente_nome|default:'' }}";
+const PACIENTE_PRONTUARIO = "{{ paciente_prontuario|default:'' }}";
+
+document.addEventListener('DOMContentLoaded', function () {
+    // ---- Elementos ----
+    const nomeInput          = document.getElementById('id_nome');
+    const lacreInput         = document.getElementById('id_lacre');
+    const btnGerarLacre      = document.getElementById('btn-gerar-lacre');
+    const selectEsp          = document.getElementById('id_especialidade');
+    const selectProc         = document.getElementById('id_procedimento_cirurgico');
+    const hintProc           = document.getElementById('hint-procedimento');
+    const filtroInput        = document.getElementById('filtro-materiais');
+    const materiaisContainer = document.getElementById('materiais-container');
+    const contador           = document.getElementById('materiais-selecionados');
+    const checkboxes         = materiaisContainer.querySelectorAll('input[type="checkbox"]');
+    const selecionarTodosBtn = document.getElementById('selecionar-todos');
+    const limparSelecaoBtn   = document.getElementById('limpar-selecao');
+    const linhasMaterial     = materiaisContainer.querySelectorAll('.material-row');
+
+    // ---- Geração de lacre ----
+    function gerarLacre() {
+        const now = new Date();
+        const data = now.toISOString().slice(0, 10).replace(/-/g, '');
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let sufixo = '';
+        for (let i = 0; i < 6; i++) {
+            sufixo += chars[Math.floor(Math.random() * chars.length)];
+        }
+        return `LC-${data}-${sufixo}`;
+    }
+
+    if (!lacreInput.value.trim()) {
+        lacreInput.value = gerarLacre();
+    }
+
+    btnGerarLacre.addEventListener('click', function () {
+        lacreInput.value = gerarLacre();
+    });
+
+    // ---- Pré-preencher nome com referência do paciente ----
+    if (PACIENTE_NOME && !nomeInput.value.trim()) {
+        nomeInput.placeholder = `Ex.: Kit Cirúrgico - ${PACIENTE_NOME}`;
+        // Sugestão automática no campo (usuário pode sobrescrever)
+        nomeInput.value = `Kit - ${PACIENTE_NOME}`;
+    }
+
+    // ---- Cascata especialidade → procedimento ----
+    function popularProcedimentos(especialidadeSelecionada, valorAtual) {
+        // Limpa opções, mantendo apenas a em branco
+        selectProc.innerHTML = '<option value="">---------</option>';
+
+        if (!especialidadeSelecionada || !ESP_PROC_MAP[especialidadeSelecionada]) {
+            selectProc.disabled = true;
+            hintProc.textContent = 'Selecione uma especialidade primeiro.';
+            return;
+        }
+
+        const procs = ESP_PROC_MAP[especialidadeSelecionada];
+        procs.forEach(function (p) {
+            const opt = document.createElement('option');
+            opt.value = p;
+            opt.textContent = p;
+            if (p === valorAtual) opt.selected = true;
+            selectProc.appendChild(opt);
+        });
+        selectProc.disabled = false;
+        hintProc.textContent = `${procs.length} procedimento(s) disponíveis para esta especialidade.`;
+
+        // Atualiza nome do kit com sugestão se ainda vazio / padrão
+        const nomeAtual = nomeInput.value.trim();
+        const prefixoPaciente = PACIENTE_NOME ? `Kit - ${PACIENTE_NOME}` : '';
+        if (!nomeAtual || nomeAtual === prefixoPaciente) {
+            const espCurta = especialidadeSelecionada.split(' ')[0]; // ex: "Cirurgia"
+            if (PACIENTE_NOME) {
+                nomeInput.value = `Kit ${espCurta} - ${PACIENTE_NOME}`;
+            } else {
+                nomeInput.value = `Kit ${especialidadeSelecionada}`;
+            }
+        }
+    }
+
+    // Atualizar nome quando procedimento é selecionado
+    selectProc.addEventListener('change', function () {
+        const proc = selectProc.value;
+        const esp  = selectEsp.value;
+        if (!proc) return;
+        if (PACIENTE_NOME) {
+            nomeInput.value = `Kit ${proc} - ${PACIENTE_NOME}`;
+        } else {
+            nomeInput.value = `Kit ${proc}`;
+        }
+    });
+
+    // Inicializar com valor já selecionado (caso de erros de formulário)
+    const espInicial  = selectEsp.value;
+    const procInicial = selectProc.value;
+    popularProcedimentos(espInicial, procInicial);
+
+    selectEsp.addEventListener('change', function () {
+        popularProcedimentos(selectEsp.value, '');
+    });
+
+    // ---- Filtro e seleção de materiais ----
+    function atualizarContador() {
+        const total = Array.from(checkboxes).filter(cb => cb.checked).length;
+        contador.textContent = `${total} selecionado(s)`;
+    }
+
+    function filtrarMateriais() {
+        const termo = filtroInput.value.toLowerCase().trim();
+        linhasMaterial.forEach(function (linha) {
+            const texto = (linha.getAttribute('data-search') || '').toLowerCase();
+            linha.style.display = texto.includes(termo) ? 'flex' : 'none';
+        });
+    }
+
+    checkboxes.forEach(cb => cb.addEventListener('change', atualizarContador));
+
+    selecionarTodosBtn.addEventListener('click', function () {
+        linhasMaterial.forEach(function (linha) {
+            if (linha.style.display !== 'none') {
+                const cb = linha.querySelector('input[type="checkbox"]');
+                if (cb) cb.checked = true;
+            }
+        });
+        atualizarContador();
+    });
+
+    limparSelecaoBtn.addEventListener('click', function () {
+        checkboxes.forEach(cb => { cb.checked = false; });
+        atualizarContador();
+    });
+
+    filtroInput.addEventListener('input', filtrarMateriais);
+    atualizarContador();
+});
+</script>
+
+<style>
+.cadastrar-kit-title {
+    color: #e9f3ff !important;
+    font-weight: 700;
+}
+
+.cadastrar-kit-subtitle {
+    color: #ccddf1;
+    font-weight: 500;
+}
+
+.materiais-scroll {
+    max-height: 420px;
+    overflow: auto;
+    background: #fff;
+}
+
+.material-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.5rem;
+    border-bottom: 1px solid #eef2f7;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.material-row:hover {
+    background: #f8fbff;
+}
+
+.material-row:last-child {
+    border-bottom: none;
+}
+
+.material-check input[type='checkbox'] {
+    width: 1.05rem;
+    height: 1.05rem;
+}
+
+.material-label {
+    font-weight: 500;
+    color: #1f2937;
+}
+</style>
 
 {% endblock %}

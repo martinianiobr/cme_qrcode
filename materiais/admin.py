@@ -11,9 +11,20 @@ class PacienteAdmin(admin.ModelAdmin):
 
 @admin.register(KitPaciente)
 class KitPacienteAdmin(admin.ModelAdmin):
-    list_display = ('paciente','kit','data_cirurgia','status','criado_em')
+    list_display = (
+        'paciente',
+        'kit',
+        'data_cirurgia',
+        'status',
+        'criado_em',
+        'motivo_cancelamento',
+        'cancelado_em',
+        'cancelado_por',
+    )
     search_fields = ('paciente__nome','kit__nome')
-    list_filter = ('status','data_cirurgia')
+    list_filter = ('status','data_cirurgia','cancelado_em')
+    autocomplete_fields = ('paciente', 'kit', 'cancelado_por')
+    readonly_fields = ('criado_em', 'atualizado_em', 'motivo_cancelamento', 'cancelado_em', 'cancelado_por')
 
 
 @admin.register(Material)

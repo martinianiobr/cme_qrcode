@@ -1,0 +1,17 @@
+{% extends 'materiais/base.html' %}
+{% block title %}Buscar Paciente AGHU{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Buscar Paciente no AGHU</h5>
+        </div>
+        <div class="card-body">
+            <p>Use o formulário de criação de processo para pesquisar pacientes no AGHU e vinculá-los a um kit.</p>
+            <p>Esta página era usada para buscas em versões anteriores, mas agora a pesquisa está integrada diretamente no formulário.</p>
+            <a href="{% url 'criar_kit_paciente' %}" class="btn btn-primary">Ir para Novo Processo</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

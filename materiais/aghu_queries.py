@@ -1,134 +1,76 @@
-class FrontDeskPatientQuery:
+class PacienteQuery:
     @staticmethod
-    def all():
+    def buscar_por_nome_ou_prontuario():
         return """
             SELECT
-                pacientes.prontuario,
-                CASE WHEN
-                    (char_length(pacientes.nome_social)>=3) THEN pacientes.nome_social
-                ELSE
-                    pacientes.nome
-                END as nome,
-                internacoes.dthr_internacao AS "Data da Internação",
-                pacientes.nome_mae AS "Nome da mãe",
-                pacientes.dt_nascimento AS "Data de Nascimento"
-            FROM
-                agh.ain_internacoes internacoes
-            LEFT JOIN
-                agh.aip_pacientes pacientes on internacoes.pac_codigo = pacientes.codigo
+                pac.prontuario,
+                CASE
+                    WHEN char_length(COALESCE(pac.nome_social, '')) >= 3 THEN pac.nome_social
+                    ELSE pac.nome
+                END AS nome,
+                pac.nome_mae,
+                pac.dt_nascimento AS data_nascimento,
+                pac.cpf,
+                CONCAT_WS(' ',
+                    NULLIF('(' || COALESCE(pac.ddd_fone_residencial::text, '') || ')', '()'),
+                    NULLIF(COALESCE(pac.fone_residencial::text, ''), '')
+                ) AS telefone
+            FROM agh.aip_pacientes pac
             WHERE
-                internacoes.dthr_alta_medica is null AND
-                CASE WHEN
-                    (char_length(pacientes.nome_social)>=3) THEN pacientes.nome_social
-                ELSE
-                    pacientes.nome
-                END ILIKE %s
+                (
+                    %s IS NOT NULL
+                    AND pac.prontuario = %s
+                )
+                OR
+                (
+                    (char_length(COALESCE(pac.nome_social, '')) >= 3 AND pac.nome_social ILIKE %s)
+                    OR
+                    (char_length(COALESCE(pac.nome_social, '')) < 3 AND pac.nome ILIKE %s)
+                )
+            ORDER BY nome
+            LIMIT %s
         """
 
     @staticmethod
-    def one():
+    def detalhes_por_prontuario():
         return """
             SELECT
-                pacientes.prontuario,
-                CASE WHEN
-                    (char_length(pacientes.nome_social)>=3) THEN pacientes.nome_social
-                ELSE
-                    pacientes.nome
-                END as nome,
-                internacoes.dthr_internacao AS "Data da Internação",
-                pacientes.nome_mae AS "Nome da mãe",
-                pacientes.dt_nascimento AS "Data de Nascimento"
-            FROM
-                agh.ain_internacoes internacoes
-            LEFT JOIN
-                agh.aip_pacientes pacientes on internacoes.pac_codigo = pacientes.codigo
-            WHERE
-                internacoes.dthr_alta_medica is null AND
-                pacientes.prontuario = %s
+                pac.prontuario,
+                CASE
+                    WHEN char_length(COALESCE(pac.nome_social, '')) >= 3 THEN pac.nome_social
+                    ELSE pac.nome
+                END AS nome,
+                pac.nome_social,
+                pac.nome_mae,
+                pac.dt_nascimento AS data_nascimento,
+                CAST(EXTRACT(YEAR FROM AGE(CURRENT_DATE, pac.dt_nascimento)) AS INTEGER) AS idade,
+                pac.uf_sigla AS uf,
+                pac.cor,
+                pac.sexo,
+                pac.nome_pai,
+                pac.naturalidade,
+                CONCAT_WS(' ',
+                    NULLIF('(' || COALESCE(pac.ddd_fone_residencial::text, '') || ')', '()'),
+                    NULLIF(COALESCE(pac.fone_residencial::text, ''), '')
+                ) AS telefone,
+                pac.estado_civil,
+                pac.cpf,
+                pac.rg,
+                pac.nro_cartao_saude AS cns,
+                pac.sexo_biologico,
+                intern.dthr_internacao AS data_internacao,
+                leito.lto_id AS leito,
+                unidade.descricao AS unidade_internacao
+            FROM agh.aip_pacientes pac
+            LEFT JOIN agh.ain_internacoes intern ON intern.pac_codigo = pac.codigo
+            LEFT JOIN agh.ain_leitos leito ON intern.lto_lto_id = leito.lto_id
+            LEFT JOIN agh.agh_unidades_funcionais unidade ON intern.unf_seq = unidade.seq
+            WHERE pac.prontuario = %s
+            ORDER BY intern.dthr_internacao DESC NULLS LAST
+            LIMIT 1
         """
-
-
-class FrontDeskBedQuery:
-    @staticmethod
-    def all():
-        return """
-            SELECT
-                pacientes.prontuario,
-                CASE WHEN
-                    (char_length(pacientes.nome_social)>=3) THEN pacientes.nome_social
-                ELSE
-                    pacientes.nome
-                END as nome,
-                internacoes.dthr_internacao as "Data Internação",
-                pacientes.nome_mae as "Nome da mãe",
-                pacientes.dt_nascimento as "Data Nascimento"
-            FROM
-                agh.ain_internacoes internacoes
-            LEFT JOIN
-                agh.aip_pacientes pacientes on internacoes.pac_codigo = pacientes.codigo
-            WHERE
-                internacoes.lto_lto_id is not null AND
-                internacoes.dthr_alta_medica is null AND
-                CASE WHEN
-                    (char_length(pacientes.nome_social)>=3) THEN pacientes.nome_social
-                ELSE
-                    pacientes.nome
-                END ILIKE %s
-        """
-
-    @staticmethod
-    def one():
-        return """
-            SELECT
-                pacientes.prontuario,
-                CASE WHEN
-                    (char_length(pacientes.nome_social)>=3) THEN pacientes.nome_social
-                ELSE
-                    pacientes.nome
-                END as nome,
-                internacoes.dthr_internacao as "Data Internação",
-                pacientes.nome_mae as "Nome da mãe",
-                pacientes.dt_nascimento as "Data Nascimento"
-            FROM
-                agh.ain_internacoes internacoes
-            LEFT JOIN
-                agh.aip_pacientes pacientes on internacoes.pac_codigo = pacientes.codigo
-            WHERE
-                internacoes.lto_lto_id is not null AND
-                internacoes.dthr_alta_medica is null AND
-              pacientes.prontuario = %s
-         """
 
 
 def get_patient_identification():
-    return """
-        SELECT
-            pacientes.prontuario,
-            CASE WHEN
-                (char_length(pacientes.nome_social)>=3) THEN pacientes.nome_social
-            ELSE
-                pacientes.nome
-            END as nome,
-            internacoes.dthr_internacao as "Data Internação",
-            pacientes.nome_mae as "Nome da mãe",
-            pacientes.dt_nascimento as "Data Nascimento"
-        FROM
-            agh.ain_internacoes internacoes
-        LEFT JOIN
-            agh.aip_pacientes pacientes on internacoes.pac_codigo = pacientes.codigo
-        WHERE
-            internacoes.lto_lto_id is not null AND
-            internacoes.dthr_alta_medica is null AND
-            CASE
-                -- pesquisa pelo prontuario do paciente
-                WHEN %s IS NOT NULL THEN pacientes.prontuario = %s
-                -- pesquisa pelo nome do paciente
-                WHEN %s IS NOT NULL THEN 
-                    CASE WHEN
-                        (char_length(pacientes.nome_social)>=3) THEN pacientes.nome_social
-                    ELSE
-                        pacientes.nome
-                    END ILIKE %s
-            END
-    """
+    return PacienteQuery.detalhes_por_prontuario()
 

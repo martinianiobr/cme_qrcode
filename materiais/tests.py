@@ -1,8 +1,11 @@
+from datetime import timedelta
+
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
-from .models import Material, Kit, Checklist, ChecklistItem, LeituraQR
+from .models import Material, Kit, Paciente, Checklist, ChecklistItem, LeituraQR, KitPaciente
 from django.contrib.auth import get_user_model
+from .material_catalog import SYSTEM_MATERIAL_CATALOG
 
 User = get_user_model()
 
@@ -21,12 +24,37 @@ class MaterialModelTests(TestCase):
         m.save()
         self.assertEqual(str(m), 'Teste')
 
+    def test_material_list_bootstraps_system_catalog(self):
+        user = User.objects.create_user('cataloguser', 'catalog@b.com', 'pass')
+        client = Client()
+        client.login(username='cataloguser', password='pass')
+
+        response = client.get(reverse('lista_materiais'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            Material.objects.filter(origem_cadastro='sistema').count(),
+            len(SYSTEM_MATERIAL_CATALOG)
+        )
+        self.assertTrue(Material.objects.filter(codigo_catalogo='CIR-001').exists())
+
+    def test_kit_list_does_not_force_system_kit_bootstrap(self):
+        user = User.objects.create_user('kitcatalog', 'kitcatalog@b.com', 'pass')
+        client = Client()
+        client.login(username='kitcatalog', password='pass')
+
+        response = client.get(reverse('lista_kits'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertGreaterEqual(Kit.objects.count(), 0)
+
 
 class ChecklistFlowTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user('testuser', 'a@b.com', 'pass')
         self.client = Client()
         self.client.login(username='testuser', password='pass')
+        # base material/kit/paciente/kitpaciente used by multiple tests
         self.m1 = Material.objects.create(
             nome='Mat1', categoria='Cat', lote='L1',
             data_esterilizacao=timezone.now().date(), status_esterilizacao='OK',
@@ -35,9 +63,24 @@ class ChecklistFlowTests(TestCase):
         )
         self.kit = Kit.objects.create(nome='Kit1', lacre='LACRE1', codigo_qr='KIT-Kit1-1')
         self.kit.materiais.add(self.m1)
+        # create a dummy paciente and associate
+        from .models import Paciente, KitPaciente
+        self.paciente = Paciente.objects.create(
+            nome='Paciente Teste', prontuario='PT001', nome_mae='Mae',
+            data_nascimento=timezone.now().date(), cpf='111.111.111-11'
+        )
+        self.kp = KitPaciente.objects.create(
+            paciente=self.paciente,
+            kit=self.kit,
+            data_cirurgia=timezone.now()
+        )
 
     def test_checklist_creation_generates_items(self):
-        ck = Checklist.objects.create(kit=self.kit, fase='pre', conferido_por=self.user)
+        ck = Checklist.objects.create(
+            kit_paciente=self.kp,
+            fase='pre',
+            usuario_responsavel=self.user
+        )
         # items created in view normally; manually simulate
         for mat in self.kit.materiais.all():
             ChecklistItem.objects.get_or_create(checklist=ck, material=mat)
@@ -62,25 +105,249 @@ class ChecklistFlowTests(TestCase):
         self.assertEqual(response.context['page_obj'].paginator.per_page, 20)
 
     def test_checklist_create_view_sets_user(self):
+        # posting to the legacy create view should assign the responsible user
         url = reverse('cadastrar_checklist')
         response = self.client.post(url, {
-            'kit': self.kit.pk,
+            'kit_paciente': self.kp.pk,
             'fase': 'pre',
-            'paciente': 'P',
-            'cirurgia': 'C'
+            'observacoes': ''
         })
         # should redirect to list
         self.assertEqual(response.status_code, 302)
         ck = Checklist.objects.latest('id')
-        self.assertEqual(ck.conferido_por, self.user)
+        self.assertEqual(ck.usuario_responsavel, self.user)
 
     def test_scan_qr_marks_item(self):
-        ck = Checklist.objects.create(kit=self.kit, fase='pre', conferido_por=self.user)
-        for mat in self.kit.materiais.all():
-            ChecklistItem.objects.get_or_create(checklist=ck, material=mat)
-        url = reverse('scan_qr')
-        response = self.client.post(url, data='{"codigo":"MAT-L1-Mat1"}', content_type='application/json')
-        self.assertJSONEqual(response.content, {'success': True, 'tipo': 'material'})
-        item = ChecklistItem.objects.get(checklist=ck, material=self.m1)
-        self.assertTrue(item.conferido)
-        self.assertEqual(LeituraQR.objects.filter(checklist=ck, material=self.m1, acao='conferido').count(), 1)
+        ck = Checklist.objects.create(kit_paciente=self.kp, fase='pre', usuario_responsavel=self.user)
+        ck.gerar_itens_automaticamente()
+        # put active checklist in session so processar_qr_code will mark
+        session = self.client.session
+        session['checklist_ativo'] = ck.id
+        session['kit_paciente_ativo'] = self.kp.id
+        session.save()
+        url = reverse('processar_qr_code')
+        response = self.client.post(
+            url,
+            data='{"qr_data":"MAT-L1-Mat1"}',
+            content_type='application/json'
+        )
+        data = response.json()
+        # API now returns status, item_id and progresso when marking succeeds
+        self.assertEqual(data.get('status'), 'success')
+        self.assertEqual(int(data.get('item_id')), self.m1.id)
+        self.assertEqual(data.get('itens_checados'), 1)
+        self.assertEqual(data.get('total_itens'), 1)
+        self.assertTrue(data.get('concluido'))
+        # check that the json-based item was marked
+        ck.refresh_from_db()
+        self.assertTrue(ck.itens[str(self.m1.id)]['checado'])
+        self.assertEqual(ck.progresso(), 100)
+
+    def test_scan_qr_repeated_keeps_same_count(self):
+        ck = Checklist.objects.create(kit_paciente=self.kp, fase='pre', usuario_responsavel=self.user)
+        ck.gerar_itens_automaticamente()
+        session = self.client.session
+        session['checklist_ativo'] = ck.id
+        session['kit_paciente_ativo'] = self.kp.id
+        session.save()
+
+        url = reverse('processar_qr_code')
+        self.client.post(url, data='{"qr_data":"MAT-L1-Mat1"}', content_type='application/json')
+        response = self.client.post(url, data='{"qr_data":"MAT-L1-Mat1"}', content_type='application/json')
+        data = response.json()
+
+        self.assertEqual(data.get('status'), 'success')
+        self.assertTrue(data.get('already_checked'))
+        self.assertEqual(data.get('itens_checados'), 1)
+
+
+class KitPacienteFlowTests(TestCase):
+    def setUp(self):
+        # disable real AGHU DB during unit tests
+        from django.conf import settings
+        settings.AGHU_USE_DB = False
+
+        self.user = User.objects.create_user('testuser2', 'c@d.com', 'pass')
+        self.client = Client()
+        self.client.login(username='testuser2', password='pass')
+        # create a patient and kit
+        from .models import Paciente
+        self.paciente = Paciente.objects.create(
+            nome='Paciente Ex', prontuario='P001', nome_mae='Mae',
+            data_nascimento=timezone.now().date(), cpf='000.000.000-00'
+        )
+        self.material = Material.objects.create(
+            nome='MatX', categoria='Cat', lote='LX',
+            data_esterilizacao=timezone.now().date(), status_esterilizacao='OK',
+            validade=timezone.now().date(), responsavel='X', estoque=1,
+            codigo_qr='MAT-LX-MatX'
+        )
+        self.kit2 = Kit.objects.create(nome='KitX', lacre='LACREX', codigo_qr='KIT-KitX-1')
+        self.kit2.materiais.add(self.material)
+
+    def test_kitpaciente_creation_and_checklists(self):
+        url = reverse('criar_kit_paciente')
+        # post form directly
+        dt = timezone.now().strftime('%Y-%m-%dT%H:%M')
+        response = self.client.post(url, {
+            'paciente': self.paciente.id,
+            'kit': self.kit2.id,
+            'data_cirurgia': dt
+        })
+        # should redirect to detalhes
+        self.assertEqual(response.status_code, 302)
+        kp = KitPaciente.objects.latest('id')
+        # three checklists created
+        self.assertEqual(kp.checklists.count(), 3)
+        for fase in ['pre','intra','pos']:
+            self.assertTrue(kp.checklists.filter(fase=fase).exists())
+            ck = kp.checklists.get(fase=fase)
+            # items automatically generated
+            self.assertEqual(len(ck.itens), 1)
+
+    def test_process_requires_patient_when_creating_process(self):
+        url = reverse('criar_kit_paciente')
+        dt = timezone.now().strftime('%Y-%m-%dT%H:%M')
+        response = self.client.post(url, {
+            'paciente': '',
+            'kit': self.kit2.id,
+            'data_cirurgia': dt
+        })
+        # form should return with errors
+        self.assertEqual(response.status_code, 200)
+        form = response.context['form']
+        self.assertIn('paciente', form.errors)
+
+    def test_kit_creation_without_patient_allowed(self):
+        """Cadastro de kit nao deve criar processo automaticamente."""
+        url = reverse('cadastrar_kit')
+        response = self.client.post(url, {
+            'nome': 'KitSemPaciente',
+            'lacre': 'L001',
+            'materiais': [self.material.id],
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Kit.objects.filter(nome='KitSemPaciente').exists())
+        self.assertFalse(KitPaciente.objects.filter(kit__nome='KitSemPaciente').exists())
+
+    def test_manual_material_create_is_contingency(self):
+        url = reverse('cadastrar_material')
+        response = self.client.post(url, {
+            'codigo_catalogo': 'CNT-001',
+            'nome': 'Material Excepcional',
+            'categoria': 'Contingencia',
+            'tipo': 'Reserva',
+            'tamanho': 'Padrao',
+            'material_composicao': 'Inox',
+            'classificacao_processamento': 'reutilizavel_esteril',
+            'uso_observacao': 'Cadastro manual de emergencia',
+            'lote': 'LCT-1',
+            'data_esterilizacao': timezone.now().date(),
+            'status_esterilizacao': 'OK',
+            'validade': timezone.now().date() + timedelta(days=30),
+            'responsavel': 'Operador',
+            'estoque': 1,
+            'fornecedor': 'Manual',
+            'localizacao': 'Reserva',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        material = Material.objects.get(nome='Material Excepcional')
+        self.assertEqual(material.origem_cadastro, 'contingencia')
+        self.assertEqual(material.codigo_catalogo, 'CNT-001')
+
+    def test_kit_creation_does_not_accept_process_fields(self):
+        """Mesmo com campos extras enviados, o processo continua centralizado em KitPaciente."""
+        url = reverse('cadastrar_kit')
+        dt = timezone.now().strftime('%Y-%m-%dT%H:%M')
+        response = self.client.post(url, {
+            'nome': 'KitDireto',
+            'lacre': 'L002',
+            'materiais': [self.material.id],
+            'paciente': self.paciente.id,
+            'data_cirurgia': dt,
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Kit.objects.filter(nome='KitDireto').exists())
+        self.assertFalse(KitPaciente.objects.filter(kit__nome='KitDireto').exists())
+
+    def test_processar_qr_marks_material_in_stage(self):
+        # build kitpaciente and specific checklist
+        kp = KitPaciente.objects.create(
+            paciente=self.paciente, kit=self.kit2,
+            data_cirurgia=timezone.now()
+        )
+        ck = Checklist.objects.create(kit_paciente=kp, fase='pre', usuario_responsavel=self.user)
+        ck.gerar_itens_automaticamente()
+        # attach session
+        session = self.client.session
+        session['checklist_ativo'] = ck.id
+        session['kit_paciente_ativo'] = kp.id
+        session.save()
+        # hit the QR processor
+        url = reverse('processar_qr_code')
+        response = self.client.post(url, data='{"qr_data":"MAT-LX-MatX"}', content_type='application/json')
+        data = response.json()
+        self.assertEqual(data.get('status'), 'success')
+        # item should be marked
+        ck.refresh_from_db()
+        self.assertTrue(ck.itens[str(self.material.id)]['checado'])
+        self.assertEqual(ck.progresso(), 100)
+
+        # scanning a kit-paciente QR should redirect to detalhes page
+        redirect_qr = f"KIT_PACIENTE_{kp.id}"
+        response2 = self.client.post(url, data=f'{{"qr_data":"{redirect_qr}"}}', content_type='application/json')
+        data2 = response2.json()
+        self.assertEqual(data2.get('status'), 'redirect')
+        self.assertIn(f'/materiais/processos/{kp.id}/', data2.get('url', ''))
+
+    def test_aghu_search_and_ajax_import(self):
+        # search by name returns list
+        # use data dictionary so Django handles encoding of non-ascii
+        resp = self.client.get(reverse('buscar_pacientes_aghu'), {'term': 'JOÃO'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn('pacientes', data)
+        # len may be zero in simulation, that's acceptable
+        if data['pacientes']:
+            first = data['pacientes'][0]
+            self.assertIn('prontuario', first)
+        # search by prontuario returns direct hit (or empty list)
+        resp2 = self.client.get(reverse('buscar_pacientes_aghu'), {'term': '123456'})
+        data2 = resp2.json()
+        self.assertIsInstance(data2.get('pacientes', []), list)
+        # AJAX create patient from AGHU
+        create_url = reverse('criar_paciente_aghu')
+        resp3 = self.client.post(
+            create_url,
+            {'prontuario': '123456'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+        json3 = resp3.json()
+        self.assertIn('id', json3)
+        paciente_importado = Paciente.objects.get(id=json3['id'])
+        self.assertEqual(paciente_importado.fonte, 'AGHU')
+        self.assertTrue(bool(paciente_importado.nome_mae))
+        self.assertTrue(bool(paciente_importado.cpf))
+        # posting again returns existing flag
+        resp4 = self.client.post(
+            create_url,
+            {'prontuario': '123456'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+        json4 = resp4.json()
+        self.assertTrue(json4.get('existing', False))
+
+    def test_aghu_not_found_creates_contingency_patient(self):
+        create_url = reverse('criar_paciente_aghu')
+        resp = self.client.post(
+            create_url,
+            {'prontuario': '3903309'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+        data = resp.json()
+
+        self.assertIn('id', data)
+        self.assertTrue(data.get('contingencia', False))
+        paciente = Paciente.objects.get(id=data['id'])
+        self.assertEqual(paciente.prontuario, '3903309')

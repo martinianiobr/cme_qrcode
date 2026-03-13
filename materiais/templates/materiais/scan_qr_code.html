@@ -139,7 +139,8 @@
                             <div class="checado-info">
                                 <i class="fas fa-qrcode text-info"></i>
                                 <small class="d-block text-success">
-                                    {{ item_data.metodo|title:"checklist_item.metodo_check" }}
+                                    {{ item_data.metodo|title }}
+
                                 </small>
                                 <small class="text-muted">
                                     {{ item_data.data|date:"H:i:s" }}
@@ -425,7 +426,26 @@ function pausarScanner() {
 function concluirEtapa() {
     if (confirm('Tem certeza que deseja concluir esta etapa?')) {
         const checklistId = '{{ checklist.id|default:"" }}';
-        window.location.href = `/materiais/concluir-etapa/${checklistId}/`;
+        if (!checklistId) {
+            mostrarErro('Checklist não identificado para conclusão.');
+            return;
+        }
+
+        const concluirUrlBase = "{% url 'concluir_etapa' 0 %}";
+        const concluirUrl = concluirUrlBase.replace('/0/', `/${checklistId}/`);
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = concluirUrl;
+
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = getCookie('csrftoken');
+        form.appendChild(csrf);
+
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 

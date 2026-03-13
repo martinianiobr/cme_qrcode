@@ -6,18 +6,18 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4 fade-in-up">
         <div>
-            <h2 class="mb-0">
-                <i class="fas fa-procedures me-2 text-primary"></i>Processos Cirúrgicos
+            <h2 class="mb-0 page-title">
+                <i class="fas fa-procedures me-2"></i>Processos Cirúrgicos
             </h2>
-            <p class="text-muted mb-0">Acompanhamento de kits por paciente</p>
+            <p class="dashboard-subtitle mb-0">Acompanhamento de kits por paciente</p>
         </div>
-        <a href="{% url 'criar_kit_paciente' %}" class="btn btn-primary pulse">
+        <a href="{% url 'criar_kit_paciente' %}" class="btn btn-primary btn-novo-processo">
             <i class="fas fa-plus-circle me-2"></i>Novo Processo
         </a>
     </div>
 
     <!-- Filtros -->
-    <div class="card shadow-sm mb-4 fade-in-up">
+    <div class="card shadow-sm mb-4 fade-in-up filtro-card">
         <div class="card-body">
             <form method="get">
                 <div class="row g-3">
@@ -36,13 +36,14 @@
                         <label for="filtro_status" class="form-label fw-semibold">
                             <i class="fas fa-filter me-1 text-primary"></i>Status
                         </label>
-                        <select name="status" id="filtro_status" class="form-control">
-                            <option value="">Todos</option>
+                        <select name="status" id="filtro_status" class="form-select">
+                            <option value="">Em andamento (padrão)</option>
                             <option value="agendado" {% if request.GET.status == 'agendado' %}selected{% endif %}>Agendado</option>
                             <option value="pre_operatorio" {% if request.GET.status == 'pre_operatorio' %}selected{% endif %}>Pré-operatório</option>
                             <option value="intra_operatorio" {% if request.GET.status == 'intra_operatorio' %}selected{% endif %}>Intra-operatório</option>
                             <option value="pos_operatorio" {% if request.GET.status == 'pos_operatorio' %}selected{% endif %}>Pós-operatório</option>
                             <option value="concluido" {% if request.GET.status == 'concluido' %}selected{% endif %}>Concluído</option>
+                            <option value="cancelado" {% if request.GET.status == 'cancelado' %}selected{% endif %}>Cancelado</option>
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -79,17 +80,17 @@
         <div class="col-lg-6 col-xl-4 fade-in-up">
             <div class="card h-100 shadow-sm hover-lift">
                 <!-- Header do Card -->
-                <div class="card-header bg-light py-3">
+                <div class="card-header process-card-header py-3">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <h5 class="mb-1 text-primary">
+                            <h5 class="mb-1 process-card-title">
                                 <i class="fas fa-user-injured me-2"></i>{{ kit_paciente.paciente.nome }}
                             </h5>
-                            <small class="text-muted">
+                            <small class="process-card-subtitle">
                                 <i class="fas fa-id-card me-1"></i>{{ kit_paciente.paciente.prontuario }}
                             </small>
                         </div>
-                        <span class="badge {% if kit_paciente.status == 'concluido' %}bg-success{% elif kit_paciente.status == 'cancelado' %}bg-danger{% else %}bg-warning{% endif %}">
+                        <span class="badge status-badge {% if kit_paciente.status == 'concluido' %}status-concluido{% elif kit_paciente.status == 'cancelado' %}status-cancelado{% elif kit_paciente.status == 'agendado' %}status-agendado{% else %}status-andamento{% endif %}">
                             {{ kit_paciente.get_status_display }}
                         </span>
                     </div>
@@ -109,7 +110,7 @@
 
                     <!-- Etapas do Processo -->
                     <div class="etapas-processo">
-                        {% for fase, nome_fase in checklist.FASE_CHOICES %}
+                        {% for fase, nome_fase in phase_choices %}
                             {% for checklist_atual in kit_paciente.checklists.all %}
                                 {% if checklist_atual.fase == fase %}
                         <div class="etapa-item mb-2">
@@ -135,7 +136,7 @@
                             
                             {% if checklist_atual %}
                             <div class="progress mt-1" style="height: 4px;">
-                                <div class="progress-bar {% if checklist_atual.concluido %}bg-success{% else %}bg-warning{% endif %}" 
+                                  <div class="progress-bar {% if checklist_atual.concluido %}bg-success{% else %}bg-primary{% endif %}" 
                                      style="width: {{ checklist_atual.progresso }}%"></div>
                             </div>
                             {% endif %}
@@ -153,7 +154,7 @@
                            class="btn btn-outline-primary flex-fill">
                             <i class="fas fa-eye me-1"></i>Ver Detalhes
                         </a>
-                        {% if kit_paciente.processo_concluido %}
+                                {% if kit_paciente.processo_concluido %}
                         <a href="{% url 'relatorio_final' kit_paciente.id %}" 
                            class="btn btn-outline-success">
                             <i class="fas fa-file-pdf me-1"></i>Relatório
@@ -166,9 +167,9 @@
         {% empty %}
         <div class="col-12 text-center py-5">
             <div class="fade-in-up">
-                <i class="fas fa-procedures fa-3x text-muted mb-3"></i>
-                <h4 class="text-muted">Nenhum processo encontrado</h4>
-                <p class="text-muted">
+                <i class="fas fa-procedures fa-3x empty-state-icon mb-3"></i>
+                <h4 class="empty-state-title">Nenhum processo encontrado</h4>
+                <p class="empty-state-text">
                     {% if request.GET.q or request.GET.status or request.GET.data %}
                     Não há processos correspondentes aos filtros aplicados
                     {% else %}
@@ -209,6 +210,32 @@ document.addEventListener('DOMContentLoaded', function() {
     padding-left: 1rem;
 }
 
+.dashboard-subtitle {
+    color: #ccddf1;
+    font-weight: 500;
+}
+
+.page-title {
+    color: #e9f3ff !important;
+}
+
+.page-title i {
+    color: #e9f3ff !important;
+}
+
+.btn-novo-processo {
+    min-height: 48px;
+    padding: 0.72rem 1.35rem;
+    font-weight: 700;
+}
+
+.filtro-card {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid #d3e0ee;
+    box-shadow: 0 10px 28px rgba(12, 44, 74, 0.16) !important;
+    backdrop-filter: blur(2px);
+}
+
 .etapa-item {
     transition: all 0.3s ease;
 }
@@ -224,6 +251,80 @@ document.addEventListener('DOMContentLoaded', function() {
 .progress-info {
     min-width: 40px;
     text-align: right;
+}
+
+.progress-info small {
+    color: #526b84 !important;
+    font-weight: 600;
+}
+
+.card-body small.text-muted.d-block {
+    color: #4e657d !important;
+}
+
+.card-body strong {
+    color: #1d344a;
+}
+
+.process-card-header {
+    background: linear-gradient(135deg, #0f5ea8, #0b3a6e);
+}
+
+.process-card-title {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.process-card-subtitle {
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.status-badge {
+    font-size: 0.76rem;
+    font-weight: 700;
+    padding: 0.45rem 0.7rem;
+}
+
+.status-agendado {
+    background: #dceefe !important;
+    color: #0d4f82 !important;
+}
+
+.status-andamento {
+    background: #fff1d0 !important;
+    color: #6b4c08 !important;
+}
+
+.status-concluido {
+    background: #dff4e7 !important;
+    color: #1f6f45 !important;
+}
+
+.status-cancelado {
+    background: #fde3e7 !important;
+    color: #8d2530 !important;
+}
+
+.empty-state-icon {
+    color: #d8e6f4;
+}
+
+.empty-state-title {
+    color: #f2f7fd;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(6, 20, 36, 0.35);
+}
+
+.empty-state-text {
+    color: #c8dbef;
+    font-weight: 500;
+}
+
+@media (max-width: 768px) {
+    .btn-novo-processo {
+        min-height: 44px;
+        padding: 0.62rem 1rem;
+    }
 }
 </style>
 

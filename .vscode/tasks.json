@@ -1,0 +1,27 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "runserver-django",
+			"type": "shell",
+			"command": "C:/Users/bruno.martiniano/Desktop/cme_qrcode/.venv/Scripts/python.exe",
+			"args": [
+				"manage.py",
+				"runserver",
+				"0.0.0.0:8000"
+			],
+			"isBackground": true
+		},
+		{
+			"label": "runserver-django-manual",
+			"type": "shell",
+			"command": "C:/Users/bruno.martiniano/Desktop/cme_qrcode/.venv/Scripts/python.exe",
+			"args": [
+				"manage.py",
+				"runserver",
+				"0.0.0.0:8000"
+			],
+			"isBackground": true
+		}
+	]
+}

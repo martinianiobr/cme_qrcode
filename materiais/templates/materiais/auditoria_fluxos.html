@@ -1,0 +1,172 @@
+{% extends 'materiais/base.html' %}
+{% block title %}Auditoria de Fluxos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0 page-title auditoria-title">
+                <i class="fas fa-clipboard-check me-2"></i>Auditoria de Fluxos
+            </h2>
+            <p class="auditoria-subtitle mb-0">Rastreio completo das conferências por usuário logado</p>
+        </div>
+        <a href="{% url 'dashboard_kit_paciente' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Voltar ao Dashboard
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4 col-lg-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <small class="text-muted d-block">Processos analisados</small>
+                    <strong class="fs-4">{{ kits_total }}</strong>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-lg-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <small class="text-muted d-block">Conferências registradas</small>
+                    <strong class="fs-4">{{ conferencias_total }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label" for="f_q">Paciente/Prontuário/Kit</label>
+                        <input id="f_q" type="text" class="form-control" name="q" value="{{ request.GET.q }}" placeholder="Buscar...">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="f_status">Status</label>
+                        <select id="f_status" class="form-select" name="status">
+                            <option value="">Todos</option>
+                            <option value="agendado" {% if request.GET.status == 'agendado' %}selected{% endif %}>Agendado</option>
+                            <option value="pre_operatorio" {% if request.GET.status == 'pre_operatorio' %}selected{% endif %}>Pré-operatório</option>
+                            <option value="intra_operatorio" {% if request.GET.status == 'intra_operatorio' %}selected{% endif %}>Intra-operatório</option>
+                            <option value="pos_operatorio" {% if request.GET.status == 'pos_operatorio' %}selected{% endif %}>Pós-operatório</option>
+                            <option value="concluido" {% if request.GET.status == 'concluido' %}selected{% endif %}>Concluído</option>
+                            <option value="cancelado" {% if request.GET.status == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="f_usuario">Conferido por</label>
+                        <select id="f_usuario" class="form-select" name="usuario">
+                            <option value="">Todos</option>
+                            {% for usuario in usuarios_filtro %}
+                            <option value="{{ usuario.id }}" {% if request.GET.usuario == usuario.id|stringformat:'s' %}selected{% endif %}>
+                                {{ usuario.get_full_name|default:usuario.username }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="f_data_inicio">Data cir. inicial</label>
+                        <input id="f_data_inicio" type="date" class="form-control" name="data_inicio" value="{{ request.GET.data_inicio }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="f_data_fim">Data cir. final</label>
+                        <input id="f_data_fim" type="date" class="form-control" name="data_fim" value="{{ request.GET.data_fim }}">
+                    </div>
+                    <div class="col-md-1 d-grid">
+                        <button type="submit" class="btn btn-primary">Filtrar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="fas fa-list me-2"></i>Eventos de Conferência</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Data/Hora</th>
+                            <th>Paciente</th>
+                            <th>Prontuário</th>
+                            <th>Kit</th>
+                            <th>Etapa</th>
+                            <th>Material</th>
+                            <th>Método</th>
+                            <th>Conferido por</th>
+                            <th>Status</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for evento in conferencias %}
+                        <tr>
+                            <td>
+                                {% if evento.data_conferencia %}
+                                    {{ evento.data_conferencia|date:'d/m/Y H:i:s' }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ evento.kit_paciente.paciente.nome }}</td>
+                            <td>{{ evento.kit_paciente.paciente.prontuario }}</td>
+                            <td>{{ evento.kit_paciente.kit.nome }}</td>
+                            <td>{{ evento.checklist.get_fase_display }}</td>
+                            <td>
+                                <strong>{{ evento.material_nome }}</strong><br>
+                                <small class="text-muted">{{ evento.material_codigo }}</small>
+                            </td>
+                            <td>{{ evento.metodo|default:'manual'|title }}</td>
+                            <td>
+                                {% if evento.usuario %}
+                                    {{ evento.usuario.get_full_name|default:evento.usuario.username }}
+                                {% elif evento.usuario_id %}
+                                    Usuário #{{ evento.usuario_id }}
+                                {% else %}
+                                    Não identificado
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge {% if evento.kit_paciente.status == 'concluido' %}bg-success{% elif evento.kit_paciente.status == 'cancelado' %}bg-danger{% else %}bg-primary{% endif %}">
+                                    {{ evento.kit_paciente.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'detalhes_kit_paciente' evento.kit_paciente.id %}" class="btn btn-sm btn-outline-primary">
+                                    Ver
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center py-4 text-muted">
+                                Nenhuma conferência encontrada com os filtros aplicados.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.auditoria-title {
+    color: #e9f3ff !important;
+}
+
+.auditoria-title i {
+    color: #e9f3ff !important;
+}
+
+.auditoria-subtitle {
+    color: #ccddf1;
+    font-weight: 500;
+}
+</style>
+{% endblock %}

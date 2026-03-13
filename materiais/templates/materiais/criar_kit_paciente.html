@@ -6,10 +6,10 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4 fade-in-up">
         <div>
-            <h2 class="mb-0">
-                <i class="fas fa-plus-circle me-2 text-primary"></i>Novo Processo Cirúrgico
+            <h2 class="mb-0 page-title novo-processo-title">
+                <i class="fas fa-plus-circle me-2"></i>Novo Processo Cirúrgico
             </h2>
-            <p class="text-muted mb-0">Vincular paciente a kit cirúrgico</p>
+            <p class="novo-processo-subtitle mb-0">Vincular paciente a kit cirúrgico</p>
         </div>
         <a href="{% url 'dashboard_kit_paciente' %}" class="btn btn-outline-secondary">
             <i class="fas fa-arrow-left me-1"></i>Voltar
@@ -29,12 +29,32 @@
                     <form method="post">
                         {% csrf_token %}
                         
-                        <!-- Seleção de Paciente -->
+                        <!-- Busca de Paciente via AGHU -->
                         <div class="mb-3">
-                            <label for="{{ form.paciente.id_for_label }}" class="form-label fw-semibold">
-                                <i class="fas fa-user me-1"></i>Paciente
+                            <label for="aghu_search_input" class="form-label fw-semibold">
+                                <i class="fas fa-user me-1"></i>Buscar Paciente (nome ou prontuário)
                             </label>
+                            <div class="input-group">
+                                <input type="text" id="aghu_search_input" class="form-control" placeholder="Digite nome ou prontuário..." autocomplete="off" spellcheck="false">
+                                <button type="button" id="aghu_search_btn" class="btn btn-primary">
+                                    <i class="fas fa-search me-1"></i>Buscar
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                A busca consulta o AGHU. Depois de selecionar, o paciente é vinculado ao processo.
+                            </div>
+                        </div>
+
+                        <div id="aghu_resultados" class="list-group mb-3" style="display:none;"></div>
+
+                        <div id="paciente_selecionado_box" class="alert alert-info mb-3" style="display:none;"></div>
+
+                        <div class="d-none">
                             {{ form.paciente }}
+                        </div>
+
+                        <!-- Erros do campo paciente -->
+                        <div class="mb-3">
                             {% if form.paciente.errors %}
                             <div class="invalid-feedback d-block">
                                 {% for error in form.paciente.errors %}
@@ -44,48 +64,44 @@
                             {% endif %}
                         </div>
 
-                        <!-- Seleção de Kit -->
-                        <div class="mb-3">
-                            <label for="{{ form.kit.id_for_label }}" class="form-label fw-semibold">
-                                <i class="fas fa-briefcase me-1"></i>Kit Cirúrgico
-                            </label>
-                            {{ form.kit }}
-                            {% if form.kit.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.kit.errors %}
-                                    <small class="text-danger">{{ error }}</small>
-                                {% endfor %}
+                        <!-- Kit (campo oculto; valor preenchido automaticamente) -->
+                        <input type="hidden" name="kit" id="id_kit" value="{{ form.kit.value|default:'' }}">
+
+                        <!-- Card do kit selecionado (exibido quando kit_id é passado via URL) -->
+                        {% if kit_selecionado %}
+                        <div class="alert alert-success mb-3">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="fas fa-check-circle mt-1 text-success"></i>
+                                <div>
+                                    <strong>Kit selecionado:</strong> {{ kit_selecionado.nome }}<br>
+                                    {% if kit_selecionado.especialidade %}<small class="text-muted">{{ kit_selecionado.especialidade }}{% if kit_selecionado.procedimento_cirurgico %} — {{ kit_selecionado.procedimento_cirurgico }}{% endif %}</small>{% endif %}
+                                    {% if kit_selecionado.materiais.count %}<br><small class="text-muted">{{ kit_selecionado.materiais.count }} material(is) no kit</small>{% endif %}
+                                </div>
                             </div>
-                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Botão criar kit sempre visível até ter kit selecionado -->
+                        <div class="mb-3">
+                            <button type="button" id="criar_kit_para_paciente_btn" class="btn btn-outline-primary btn-sm" disabled>
+                                <i class="fas fa-plus-circle me-1"></i>{% if kit_selecionado %}Trocar kit{% else %}Criar kit para este paciente{% endif %}
+                            </button>
                         </div>
 
-                        <!-- Data da Cirurgia -->
-                        <div class="mb-4">
-                            <label for="{{ form.data_cirurgia.id_for_label }}" class="form-label fw-semibold">
-                                <i class="fas fa-clock me-1"></i>Data e Hora da Cirurgia
-                            </label>
-                            {{ form.data_cirurgia }}
-                            {% if form.data_cirurgia.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.data_cirurgia.errors %}
-                                    <small class="text-danger">{{ error }}</small>
-                                {% endfor %}
-                            </div>
-                            {% endif %}
-                            <div class="form-text">
-                                <small class="text-muted">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    Selecione a data e hora prevista para a cirurgia
-                                </small>
-                            </div>
+                        {% if form.kit.errors %}
+                        <div class="invalid-feedback d-block mb-2">
+                            {% for error in form.kit.errors %}
+                                <small class="text-danger">{{ error }}</small>
+                            {% endfor %}
                         </div>
+                        {% endif %}
 
                         <!-- Botões -->
                         <div class="d-flex gap-2">
                             <a href="{% url 'dashboard_kit_paciente' %}" class="btn btn-outline-secondary flex-fill">
                                 <i class="fas fa-times me-1"></i>Cancelar
                             </a>
-                            <button type="submit" class="btn btn-primary flex-fill">
+                            <button type="submit" class="btn btn-primary flex-fill" {% if not kit_selecionado %}disabled title="Crie ou selecione um kit antes de continuar"{% endif %}>
                                 <i class="fas fa-save me-1"></i>Criar Processo
                             </button>
                         </div>
@@ -145,10 +161,253 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 50);
         }, index * 100);
     });
+
+    const inputBusca = document.getElementById('aghu_search_input');
+    const btnBusca = document.getElementById('aghu_search_btn');
+    const resultadosBox = document.getElementById('aghu_resultados');
+    const pacienteSelecionadoBox = document.getElementById('paciente_selecionado_box');
+    const pacienteSelect = document.getElementById('id_paciente');
+    const criarKitBtn = document.getElementById('criar_kit_para_paciente_btn');
+    let debounceBusca = null;
+    let urlCriarKitPaciente = null;
+
+    function mostrarMensagemResultados(msg) {
+        resultadosBox.style.display = 'block';
+        resultadosBox.innerHTML = `<div class="list-group-item text-muted">${msg}</div>`;
+    }
+
+    function formatarDataNascimento(valor) {
+        if (!valor) {
+            return 'Nao informado';
+        }
+        const texto = String(valor);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+            const [ano, mes, dia] = texto.split('-');
+            return `${dia}/${mes}/${ano}`;
+        }
+        return texto;
+    }
+
+    function renderDadosPaciente(paciente) {
+        const nome = paciente.nome || 'Nao informado';
+        const prontuario = paciente.prontuario || 'Nao informado';
+        const nomeMae = paciente.nome_mae || 'Nao informado';
+        const dataNascimento = formatarDataNascimento(paciente.data_nascimento);
+
+        return `
+            <div><strong>Nome:</strong> ${nome}</div>
+            <div><strong>Prontuario:</strong> ${prontuario}</div>
+            <div><strong>Nome da mae:</strong> ${nomeMae}</div>
+            <div><strong>Data de nascimento:</strong> ${dataNascimento}</div>
+        `;
+    }
+
+    function atualizarEstadoBotaoCriarKit() {
+        const pacienteId = pacienteSelect && pacienteSelect.value ? String(pacienteSelect.value).trim() : '';
+        if (pacienteId && urlCriarKitPaciente) {
+            criarKitBtn.disabled = false;
+        } else {
+            criarKitBtn.disabled = true;
+        }
+    }
+
+    function selecionarPacienteLocal(paciente) {
+        const id = paciente.id;
+        const texto = `${paciente.nome || 'Paciente'} (${paciente.prontuario || paciente.id || ''})`;
+        let opt = Array.from(pacienteSelect.options).find(o => String(o.value) === String(id));
+        if (!opt) {
+            opt = new Option(texto, id, true, true);
+            pacienteSelect.add(opt);
+        }
+        pacienteSelect.value = String(id);
+
+        pacienteSelecionadoBox.style.display = 'block';
+        pacienteSelecionadoBox.innerHTML = `<strong>Paciente selecionado</strong>${renderDadosPaciente(paciente)}`;
+        resultadosBox.style.display = 'none';
+
+        // Ao selecionar novo paciente, o kit anterior (se houver) é descartado
+        const kitHidden = document.getElementById('id_kit');
+        if (kitHidden) kitHidden.value = '';
+        urlCriarKitPaciente = `{% url 'cadastrar_kit' %}?return_to=criar_processo&paciente_id=${encodeURIComponent(id)}`;
+        atualizarEstadoBotaoCriarKit();
+    }
+
+    async function importarPacienteAGHU(prontuario) {
+        const body = new URLSearchParams({ prontuario });
+        const resp = await fetch('{% url "criar_paciente_aghu" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body,
+        });
+        return resp.json();
+    }
+
+    async function buscarPacientes() {
+        const termo = inputBusca.value.trim();
+        if (!termo) {
+            mostrarMensagemResultados('Digite nome ou prontuário para buscar.');
+            return;
+        }
+
+        mostrarMensagemResultados('Buscando no AGHU...');
+
+        try {
+            const url = `{% url "buscar_pacientes_aghu" %}?term=${encodeURIComponent(termo)}`;
+            const resp = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await resp.json();
+            const pacientes = data.pacientes || [];
+
+            if (!pacientes.length) {
+                mostrarMensagemResultados('Nenhum paciente encontrado no AGHU para esse termo.');
+                return;
+            }
+
+            resultadosBox.style.display = 'block';
+            resultadosBox.innerHTML = pacientes.map((p) => {
+                const nome = p.nome || p.text || 'Paciente';
+                const prontuario = p.prontuario || p.id || '';
+                const nomeMae = p.nome_mae || 'Nao informado';
+                const dataNascimento = formatarDataNascimento(p.data_nascimento);
+                return `
+                    <button type="button" class="list-group-item list-group-item-action" data-prontuario="${prontuario}" data-nome="${nome}" data-nome-mae="${nomeMae}" data-data-nascimento="${p.data_nascimento || ''}">
+                        <div class="fw-semibold">${nome}</div>
+                        <small class="text-muted">Prontuário: ${prontuario}</small>
+                        <small class="d-block text-muted">Nome da mãe: ${nomeMae}</small>
+                        <small class="d-block text-muted">Nascimento: ${dataNascimento}</small>
+                    </button>
+                `;
+            }).join('');
+
+            resultadosBox.querySelectorAll('button[data-prontuario]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const prontuario = btn.getAttribute('data-prontuario');
+                    const nome = btn.getAttribute('data-nome') || `Paciente ${prontuario}`;
+                    const nomeMae = btn.getAttribute('data-nome-mae') || 'Nao informado';
+                    const dataNascimento = btn.getAttribute('data-data-nascimento') || null;
+
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importando paciente...';
+
+                    try {
+                        const importado = await importarPacienteAGHU(prontuario);
+                        if (importado.error) {
+                            mostrarMensagemResultados(importado.error);
+                            return;
+                        }
+                        selecionarPacienteLocal({
+                            id: importado.id,
+                            prontuario: importado.prontuario || prontuario,
+                            nome: importado.nome || nome,
+                            nome_mae: importado.nome_mae || nomeMae,
+                            data_nascimento: importado.data_nascimento || dataNascimento,
+                        });
+                    } catch (e) {
+                        mostrarMensagemResultados('Falha ao importar paciente do AGHU.');
+                    }
+                });
+            });
+        } catch (e) {
+            mostrarMensagemResultados('Erro ao buscar no AGHU. Verifique conexão e tente novamente.');
+        }
+    }
+
+    btnBusca.addEventListener('click', buscarPacientes);
+
+    // Ao colar manualmente no campo (Ctrl+V/menu), dispara busca em seguida.
+    inputBusca.addEventListener('paste', function() {
+        setTimeout(() => {
+            if (inputBusca.value.trim()) {
+                buscarPacientes();
+            }
+        }, 0);
+    });
+
+    // Alguns navegadores/mobile nao disparam 'paste' sempre; por isso usamos
+    // tambem o evento de input com debounce.
+    inputBusca.addEventListener('input', function() {
+        clearTimeout(debounceBusca);
+        const valor = inputBusca.value.trim();
+        if (valor.length < 2) {
+            return;
+        }
+        debounceBusca = setTimeout(() => {
+            buscarPacientes();
+        }, 400);
+    });
+
+    // Garante foco no campo ao clicar no container de busca.
+    inputBusca.closest('.input-group').addEventListener('click', function() {
+        inputBusca.focus();
+    });
+
+    inputBusca.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            buscarPacientes();
+        }
+    });
+
+    pacienteSelect.addEventListener('change', atualizarEstadoBotaoCriarKit);
+
+    criarKitBtn.addEventListener('click', function() {
+        if (criarKitBtn.disabled || !urlCriarKitPaciente) {
+            return;
+        }
+        window.location.href = urlCriarKitPaciente;
+    });
+
+    // Se paciente já vier pré-selecionado (retorno do cadastro de kit), habilita botão.
+    if (pacienteSelect && pacienteSelect.value) {
+        const opt = pacienteSelect.options[pacienteSelect.selectedIndex];
+        const texto = opt ? opt.text : `Paciente ${pacienteSelect.value}`;
+        pacienteSelecionadoBox.style.display = 'block';
+        pacienteSelecionadoBox.innerHTML = `<strong>Paciente selecionado:</strong> ${texto}`;
+        // Preserva kit_id existente no link para trocar kit sem perder o paciente
+        const kitIdAtual = document.getElementById('id_kit') ? document.getElementById('id_kit').value : '';
+        let params = `return_to=criar_processo&paciente_id=${encodeURIComponent(pacienteSelect.value)}`;
+        if (kitIdAtual) params += `&kit_id=${encodeURIComponent(kitIdAtual)}`;
+        urlCriarKitPaciente = `{% url 'cadastrar_kit' %}?${params}`;
+    }
+
+    atualizarEstadoBotaoCriarKit();
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 });
 </script>
 
 <style>
+/* Header */
+.novo-processo-title {
+    color: #e9f3ff !important;
+    font-weight: 700;
+}
+
+.novo-processo-title i {
+    color: #e9f3ff !important;
+}
+
+.novo-processo-subtitle {
+    color: #ccddf1;
+    font-weight: 500;
+}
+
 /* Animações */
 .fade-in-up {
     opacity: 0;

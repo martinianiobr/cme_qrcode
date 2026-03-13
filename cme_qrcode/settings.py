@@ -1,12 +1,32 @@
+import os
 from pathlib import Path
 
+# base directory of the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-9m41=63ocbpqkkqr*x_a2wl8wvyi9mx1j#5i=2@w(5jyqlx0ox'
+# load secret key from environment for production safety
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-9m41=63ocbpqkkqr*x_a2wl8wvyi9mx1j#5i=2@w(5jyqlx0ox'
+)
 
-DEBUG = True
+# AGHU integration settings (all overridable via environment)
+AGHU_BASE_URL = os.environ.get('AGHU_BASE_URL', 'http://aghu.hospital.gov.br')
+AGHU_TIMEOUT = int(os.environ.get('AGHU_TIMEOUT', '10'))
+AGHU_USE_DB = os.environ.get('AGHU_USE_DB', 'True').lower() in ('1', 'true', 'yes')
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver']
+# details for the remote AGHU database (separate from the local 'default' DB)
+AGHU_DB_NAME = os.environ.get('AGHU_DB_NAME', 'dbaghu')
+AGHU_DB_USER = os.environ.get('AGHU_DB_USER', 'ugen_integra')
+AGHU_DB_PASSWORD = os.environ.get('AGHU_DB_PASSWORD', 'aghuintegracao')
+AGHU_DB_HOST = os.environ.get('AGHU_DB_HOST', '10.206.3.112')
+AGHU_DB_PORT = os.environ.get('AGHU_DB_PORT', '6544')
+
+# debug/hosts
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
+ALLOWED_HOSTS = os.environ.get(
+    'DJANGO_ALLOWED_HOSTS', '127.0.0.1 localhost testserver'
+).split()
 
 # Apps instalados
 INSTALLED_APPS = [
@@ -49,14 +69,15 @@ TEMPLATES = [
 WSGI_APPLICATION = 'cme_qrcode.wsgi.application'
 
 # Banco de dados principal da aplicação (PostgreSQL)
+# the values are read from environment variables to avoid hardcoding
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'cme_qrcode',
-        'USER': 'cme_user',
-        'PASSWORD': 'cmehujbb123',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.environ.get('DB_NAME', 'cme_qrcode'),
+        'USER': os.environ.get('DB_USER', 'cme_user'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'cmehujbb123'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
     },
 }
 
@@ -85,7 +106,18 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 # Configurações de login/logout
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'dashboard'   # após login, vai para o dashboard
+LOGIN_REDIRECT_URL = 'dashboard_kit_paciente'   # após login, vai para o fluxo principal
 LOGOUT_REDIRECT_URL = 'login'      # após logout, volta para login
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# during unit test runs we don't want to hit the real PostgreSQL server
+# (and we may not have permission to create databases).  switch to an
+# in‑memory SQLite database and disable AGHU lookups.
+import sys
+if 'test' in sys.argv:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',
+    }
+    AGHU_USE_DB = False

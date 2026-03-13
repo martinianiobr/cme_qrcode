@@ -240,7 +240,7 @@ function buscarPacienteNome() {
     `;
     
     // Chamada AJAX real para a API
-    fetch('{% url "buscar_pacientes_aghu" %}?termo=' + encodeURIComponent(nome) + '&tipo=nome')
+    fetch('{% url "buscar_pacientes_aghu" %}?term=' + encodeURIComponent(nome))
         .then(res => res.json())
         .then(data => {
             if (data.pacientes && data.pacientes.length > 0) {
@@ -308,7 +308,7 @@ function buscarPacienteProntuario() {
     `;
     
     // Chamada AJAX real para a API
-    fetch('{% url "buscar_pacientes_aghu" %}?termo=' + prontuario + '&tipo=prontuario')
+    fetch('{% url "buscar_pacientes_aghu" %}?term=' + prontuario)
         .then(res => res.json())
         .then(data => {
             if (data.pacientes && data.pacientes.length > 0) {

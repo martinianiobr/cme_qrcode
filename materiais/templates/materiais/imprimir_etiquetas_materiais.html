@@ -1,0 +1,180 @@
+{% extends 'materiais/base.html' %}
+{% block title %}Etiquetas QR dos Materiais{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0 page-title">
+                <i class="fas fa-tags me-2 text-primary"></i>Etiquetas QR dos Materiais
+            </h2>
+            <p class="etiquetas-subtitle mb-0">
+                {{ kit_paciente.paciente.nome }} | {{ kit_paciente.kit.nome }}
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'detalhes_kit_paciente' kit_paciente.id %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Voltar
+            </a>
+            <a href="{{ zpl_url }}" class="btn btn-primary">
+                <i class="fas fa-download me-1"></i>Baixar ZPL Zebra
+            </a>
+            <button onclick="window.print()" class="btn btn-outline-primary btn-imprimir-previa">
+                <i class="fas fa-print me-1"></i>Imprimir Prévia
+            </button>
+        </div>
+    </div>
+
+    <div class="alert alert-info mb-4" role="alert">
+        <strong>{{ total_etiquetas }}</strong> etiquetas serão geradas (1 por material).
+        Formato térmico recomendado: 25x15 mm, 3 linhas de texto + QR Code.
+    </div>
+
+    <div class="labels-grid">
+        {% for material in materiais %}
+        <div class="label-item">
+            <div class="qr-box">
+                {% if material.qr_image %}
+                <img src="{{ material.qr_image.url }}" alt="QR {{ material.nome }}">
+                {% else %}
+                <div class="qr-fallback">QR</div>
+                {% endif %}
+            </div>
+            <div class="label-text">
+                <div class="line l1">{{ material.nome|truncatechars:24 }}</div>
+                <div class="line l2">Lote: {{ material.lote|default:'-'|truncatechars:16 }}</div>
+                <div class="line l3">
+                    {% if material.codigo_qr %}
+                        {{ material.codigo_qr }}
+                    {% else %}
+                        MATERIAL_{{ material.id }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="alert alert-warning">Nenhum material encontrado neste kit.</div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.page-title {
+    color: #e9f3ff !important;
+}
+
+.page-title i {
+    color: #e9f3ff !important;
+}
+
+.etiquetas-subtitle {
+    color: #c9dbef;
+    font-weight: 500;
+}
+
+.btn-imprimir-previa {
+    border-color: #d7e6f8;
+    color: #e8f2fd;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.btn-imprimir-previa:hover {
+    border-color: #ffffff;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.labels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 12px;
+}
+
+.label-item {
+    border: 1px solid #d7e2ee;
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    min-height: 120px;
+    background: #ffffff;
+}
+
+.qr-box {
+    width: 92px;
+    height: 92px;
+    border: 1px dashed #9fb4cb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    background: #f7fbff;
+}
+
+.qr-box img {
+    width: 88px;
+    height: 88px;
+    object-fit: contain;
+}
+
+.qr-fallback {
+    color: #667788;
+    font-weight: 600;
+}
+
+.label-text {
+    min-width: 0;
+}
+
+.line {
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.l1 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1f3347;
+}
+
+.l2 {
+    font-size: 0.9rem;
+    color: #334c65;
+    margin-top: 4px;
+}
+
+.l3 {
+    font-size: 0.84rem;
+    color: #536b82;
+    margin-top: 4px;
+}
+
+@media print {
+    .navbar,
+    footer,
+    .alert,
+    .btn {
+        display: none !important;
+    }
+
+    .container-fluid {
+        padding: 0;
+    }
+
+    .labels-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+    }
+
+    .label-item {
+        border: 1px solid #000;
+        border-radius: 0;
+        min-height: 100px;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+}
+</style>
+{% endblock %}

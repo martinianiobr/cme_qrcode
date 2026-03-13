@@ -7,8 +7,11 @@ from .views import (
 )
 from .views_kitpaciente import (
     dashboard_kit_paciente, criar_kit_paciente, detalhes_kit_paciente,
+    auditoria_fluxos,
     checklist_etapa, scan_qr_code, processar_qr_code,
-    marcar_item_manual, relatorio_final, concluir_etapa
+    marcar_item_manual, relatorio_final, concluir_etapa, imprimir_etiquetas_materiais,
+    excluir_kit_paciente,
+    criar_paciente_aghu, buscar_pacientes_aghu
 )
 
 urlpatterns = [
@@ -17,8 +20,11 @@ urlpatterns = [
     
     # Novo Sistema de Processos
     path('processos/', dashboard_kit_paciente, name='dashboard_kit_paciente'),
+    path('auditoria/fluxos/', auditoria_fluxos, name='auditoria_fluxos'),
     path('processos/novo/', criar_kit_paciente, name='criar_kit_paciente'),
     path('processos/<int:kit_paciente_id>/', detalhes_kit_paciente, name='detalhes_kit_paciente'),
+    path('processos/<int:kit_paciente_id>/etiquetas/', imprimir_etiquetas_materiais, name='imprimir_etiquetas_materiais'),
+    path('processos/<int:kit_paciente_id>/excluir/', excluir_kit_paciente, name='excluir_kit_paciente'),
     path('processos/<int:kit_paciente_id>/<str:fase>/', checklist_etapa, name='checklist_etapa'),
     path('processos/concluir-etapa/<int:checklist_id>/', concluir_etapa, name='concluir_etapa'),
     path('processos/relatorio/<int:kit_paciente_id>/', relatorio_final, name='relatorio_final'),
@@ -43,5 +49,7 @@ urlpatterns = [
     path('checklists/<int:checklist_id>/imprimir-qrcodes/', views.gerar_qr_codes_para_impressao, name='imprimir_qrcodes'),
     
     # APIs
-    path('api/buscar-pacientes/', views.buscar_pacientes_aghu, name='buscar_pacientes_aghu'),
+    # AJAX patient search uses the newer implementation in views_kitpaciente
+    path('api/buscar-pacientes/', buscar_pacientes_aghu, name='buscar_pacientes_aghu'),
+    path('api/criar-paciente/', criar_paciente_aghu, name='criar_paciente_aghu'),
 ]

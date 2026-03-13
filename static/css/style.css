@@ -354,6 +354,29 @@ footer {
     margin-top: auto;
 }
 
+.footer-logo-wrap {
+    margin: 0.25rem auto 0.75rem;
+    padding: 0 0.5rem;
+    text-align: center;
+}
+
+.footer-logo {
+    max-width: 540px;
+    max-height: 85px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    opacity: 0.95;
+    filter: drop-shadow(0 4px 10px rgba(7, 28, 47, 0.2));
+}
+
+@media (max-width: 768px) {
+    .footer-logo {
+        max-width: 46vw;
+        max-height: 48px;
+    }
+}
+
 /* Tabelas modernas */
 .table {
     border-radius: var(--radius-lg);
@@ -677,23 +700,66 @@ header, main, footer {
 
 .card-login {
     margin-top: 70px !important;
+    border: 1px solid var(--hospital-border);
+    border-radius: 14px;
 }
 
 .card-login .card-header {
     text-align: center;
+    border-bottom: 1px solid var(--hospital-border);
+    padding-bottom: 1.5rem;
+    padding-top: 0;
 }
 
-.card-login .card-header img {
-    max-width: 60%;
+.login-logo {
+    max-width: 440px;
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    margin-bottom: 1.5rem !important;
 }
 
 .card-login .card-header .card-title {
     font-size: 20px;
-    font-weight: bold;
+    font-weight: 700;
+    color: #0f5ea8;
+    margin-bottom: 0.5rem;
 }
 
 .card-login .card-subtitle {
-    font-size: 16px;
+    font-size: 14px;
+    color: #5f6f82;
+    font-weight: 500;
+}
+
+.card-login form {
+    padding-top: 0.5rem;
+}
+
+.card-login .mb-3 label {
+    color: #29445d;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 0.5rem;
+}
+
+.card-login .mb-3 input {
+    border: 1.5px solid var(--hospital-border);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    font-size: 14px;
+}
+
+.card-login .mb-3 input:focus {
+    border-color: #0f5ea8;
+    box-shadow: 0 0 0 0.2rem rgba(15, 94, 168, 0.15);
+}
+
+.card-login .btn {
+    margin-top: 0.5rem;
+    font-weight: 700;
+    padding: 0.75rem 1rem;
+    height: auto;
 }
 
 .card-login .br-message {
@@ -756,6 +822,315 @@ a:visited {
 
 #loading-1, #loading-2, #loading-3 {
     display: none;
+}
+
+/* ------------------------------------------------------------------
+   Tema Hospitalar Profissional (overrides finais)
+   ------------------------------------------------------------------ */
+:root {
+    --hospital-navy: #0b3a6e;
+    --hospital-blue: #0f5ea8;
+    --hospital-cyan: #2f8ecb;
+    --hospital-mint: #e8f4fb;
+    --hospital-ink: #16202a;
+    --hospital-muted: #5f6f82;
+    --hospital-border: #d7e2ee;
+    --hospital-surface: #ffffff;
+    --hospital-bg: #f2f6fb;
+}
+
+body {
+    font-family: 'IBM Plex Sans', 'Segoe UI', 'Open Sans', sans-serif;
+    color: var(--hospital-ink);
+    background:
+        linear-gradient(135deg, rgba(8, 24, 41, 0.82), rgba(11, 34, 56, 0.76)),
+        radial-gradient(1200px 300px at 50% -150px, rgba(219, 234, 248, 0.18) 0%, rgba(219, 234, 248, 0) 70%),
+        url('../img/fundo_cmecheck.png') center center / cover no-repeat fixed,
+        var(--hospital-bg);
+}
+
+main.container {
+    background: rgba(244, 249, 255, 0.2);
+    border: 1px solid rgba(214, 226, 238, 0.35);
+    border-radius: 16px;
+    padding: 1rem 1rem 1.25rem;
+}
+
+.top-bar {
+    height: 4px;
+    background: linear-gradient(90deg, var(--hospital-navy), var(--hospital-cyan));
+}
+
+.navbar {
+    background: rgba(255, 255, 255, 0.94) !important;
+    border-bottom: 1px solid var(--hospital-border);
+    backdrop-filter: blur(8px);
+}
+
+.navbar-brand img {
+    max-height: 74px;
+    width: auto;
+}
+
+.card {
+    border: 1px solid var(--hospital-border);
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(13, 56, 98, 0.08);
+}
+
+.card:hover {
+    transform: none;
+    box-shadow: 0 8px 22px rgba(13, 56, 98, 0.1);
+}
+
+.card-header {
+    background: #f4f8fc;
+    color: #1f3c56;
+    border-bottom: 1px solid var(--hospital-border);
+    font-weight: 600;
+}
+
+/* Cabeçalhos escuros (com classes de contexto bootstrap) */
+.card-header.bg-primary,
+.card-header.bg-info,
+.card-header.bg-success,
+.card-header.bg-dark,
+.card-header.bg-secondary,
+.card-header.process-card-header {
+    color: #ffffff;
+    border-bottom: 0;
+}
+
+.card-header.bg-primary h1,
+.card-header.bg-primary h2,
+.card-header.bg-primary h3,
+.card-header.bg-primary h4,
+.card-header.bg-primary h5,
+.card-header.bg-primary h6,
+.card-header.bg-info h1,
+.card-header.bg-info h2,
+.card-header.bg-info h3,
+.card-header.bg-info h4,
+.card-header.bg-info h5,
+.card-header.bg-info h6,
+.card-header.bg-success h1,
+.card-header.bg-success h2,
+.card-header.bg-success h3,
+.card-header.bg-success h4,
+.card-header.bg-success h5,
+.card-header.bg-success h6,
+.card-header.bg-dark h1,
+.card-header.bg-dark h2,
+.card-header.bg-dark h3,
+.card-header.bg-dark h4,
+.card-header.bg-dark h5,
+.card-header.bg-dark h6,
+.card-header.bg-secondary h1,
+.card-header.bg-secondary h2,
+.card-header.bg-secondary h3,
+.card-header.bg-secondary h4,
+.card-header.bg-secondary h5,
+.card-header.bg-secondary h6,
+.card-header.process-card-header h1,
+.card-header.process-card-header h2,
+.card-header.process-card-header h3,
+.card-header.process-card-header h4,
+.card-header.process-card-header h5,
+.card-header.process-card-header h6,
+.card-header.bg-primary .text-primary,
+.card-header.bg-info .text-primary,
+.card-header.bg-success .text-primary,
+.card-header.bg-dark .text-primary,
+.card-header.bg-secondary .text-primary,
+.card-header.process-card-header .text-primary {
+    color: #ffffff !important;
+}
+
+.card-header.bg-primary small,
+.card-header.bg-info small,
+.card-header.bg-success small,
+.card-header.bg-dark small,
+.card-header.bg-secondary small,
+.card-header.process-card-header small,
+.card-header.bg-primary .text-muted,
+.card-header.bg-info .text-muted,
+.card-header.bg-success .text-muted,
+.card-header.bg-dark .text-muted,
+.card-header.bg-secondary .text-muted,
+.card-header.process-card-header .text-muted {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.form-control,
+.form-select {
+    border: 1.5px solid var(--hospital-border);
+    border-radius: 10px;
+    min-height: 44px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--hospital-cyan);
+    box-shadow: 0 0 0 0.2rem rgba(47, 142, 203, 0.18);
+}
+
+.btn {
+    min-height: 42px;
+    border-radius: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--hospital-blue), var(--hospital-navy));
+    border-color: var(--hospital-navy);
+    color: #ffffff !important;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0e5599, #0a315c);
+    border-color: #0a315c;
+    color: #ffffff !important;
+}
+
+.btn-primary:focus,
+.btn-primary:active {
+    color: #ffffff !important;
+}
+
+.btn-outline-secondary {
+    background-color: #fff !important;
+    border-color: #93a5b8 !important;
+    color: #445668 !important;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #eef3f8 !important;
+    border-color: #7f92a8 !important;
+    color: #2d3f52 !important;
+}
+
+.btn-outline-secondary i {
+    color: inherit !important;
+}
+
+.form-label {
+    color: #29445d;
+    font-weight: 600;
+}
+
+.text-muted {
+    color: #5f6f82 !important;
+}
+
+.table thead th {
+    background: #edf3f9;
+    color: #2a4056;
+    border-bottom: 1px solid var(--hospital-border);
+    text-transform: none;
+    font-size: 0.86rem;
+}
+
+.table tbody tr:hover {
+    background-color: #f5f9fd;
+    transform: none;
+}
+
+.alert {
+    border-radius: 12px;
+    border-width: 1px;
+    border-style: solid;
+    box-shadow: none;
+}
+
+.alert-info {
+    background: #eef7ff;
+    border-color: #cfe6fa;
+    color: #1f4f7b;
+}
+
+.alert-success {
+    background: #edf8f1;
+    border-color: #cdebd7;
+    color: #236744;
+}
+
+.alert-warning {
+    background: #fff8e8;
+    border-color: #ffe3a1;
+    color: #7b5a15;
+}
+
+.alert-danger {
+    background: #fff0f1;
+    border-color: #f5c9ce;
+    color: #8b2630;
+}
+
+/* Padrao visual de status */
+.badge.bg-warning,
+.badge.text-bg-warning {
+    background-color: #ffd24d !important;
+    color: #4f3b00 !important;
+}
+
+.badge.bg-info,
+.badge.text-bg-info {
+    background-color: #d7eefc !important;
+    color: #0f4d78 !important;
+}
+
+.badge.bg-primary,
+.badge.text-bg-primary {
+    background-color: #0f5ea8 !important;
+    color: #ffffff !important;
+}
+
+.badge.bg-success,
+.badge.text-bg-success {
+    background-color: #2f8f5b !important;
+    color: #ffffff !important;
+}
+
+.page-title {
+    color: #0f5ea8;
+    font-weight: 700;
+    letter-spacing: 0.1px;
+}
+
+.page-section {
+    background: #ffffff;
+    border: 1px solid var(--hospital-border);
+    border-radius: 14px;
+}
+
+.form-text {
+    color: #62748a;
+}
+
+footer {
+    background: #0a315c !important;
+}
+
+@media (max-width: 768px) {
+    .navbar-brand img {
+        max-height: 58px;
+    }
+
+    .container,
+    .container-fluid,
+    main.container {
+        padding-left: 0.85rem;
+        padding-right: 0.85rem;
+    }
+
+    main.container {
+        border-radius: 12px;
+    }
+
+    .page-title {
+        font-size: 1.4rem;
+    }
 }
 
 .br-header .header-logo img {

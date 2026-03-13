@@ -6,27 +6,71 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4 fade-in-up">
         <div>
-            <h2 class="mb-0">
-                <i class="fas fa-procedures me-2 text-primary"></i>Detalhes do Processo
+            <h2 class="mb-0 details-header-title">
+                <i class="fas fa-procedures me-2"></i>Detalhes do Processo
             </h2>
-            <p class="text-muted mb-0">{{ kit_paciente.paciente.nome }}</p>
+            <p class="details-header-subtitle mb-0">{{ kit_paciente.paciente.nome }}</p>
         </div>
         <div>
             <a href="{% url 'dashboard_kit_paciente' %}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i>Voltar
             </a>
             <a href="{% url 'relatorio_final' kit_paciente.id %}" 
-               class="btn btn-outline-success {% if not kit_paciente.processo_concluido %}disabled{% endif %}">
+               class="btn btn-success btn-relatorio-final {% if not kit_paciente.processo_concluido %}disabled btn-relatorio-disabled{% endif %}">
                 <i class="fas fa-file-pdf me-1"></i>Relatório Final
             </a>
+            <button type="button" class="btn btn-outline-danger" {% if kit_paciente.status == 'cancelado' %}disabled{% else %}data-bs-toggle="modal" data-bs-target="#cancelarProcessoModal"{% endif %}>
+                <i class="fas fa-ban me-1"></i>{% if kit_paciente.status == 'cancelado' %}Processo Cancelado{% else %}Cancelar Processo{% endif %}
+            </button>
         </div>
     </div>
+
+    {% if kit_paciente.status == 'cancelado' %}
+    <div class="alert alert-warning fade-in-up" role="alert">
+        <strong>Processo cancelado.</strong>
+        {% if kit_paciente.cancelado_em %}
+            Em {{ kit_paciente.cancelado_em|date:"d/m/Y H:i" }}
+        {% endif %}
+        {% if kit_paciente.cancelado_por %}
+            por {{ kit_paciente.cancelado_por.get_full_name|default:kit_paciente.cancelado_por.username }}.
+        {% endif %}
+        {% if kit_paciente.motivo_cancelamento %}
+            <br><strong>Motivo:</strong> {{ kit_paciente.motivo_cancelamento }}
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if kit_paciente.status != 'cancelado' %}
+    <div class="modal fade" id="cancelarProcessoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-ban me-2"></i>Cancelar Processo</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <form method="post" action="{% url 'excluir_kit_paciente' kit_paciente.id %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <p class="mb-2">Informe o motivo do cancelamento para manter a rastreabilidade.</p>
+                        <textarea name="motivo_cancelamento" class="form-control" rows="4" maxlength="500" required placeholder="Descreva o motivo do cancelamento..."></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-check me-1"></i>Confirmar Cancelamento
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Informações Principais -->
     <div class="row g-4 mb-4 fade-in-up">
         <div class="col-lg-6">
             <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header">
                     <h6 class="mb-0">
                         <i class="fas fa-user-injured me-2"></i>Dados do Paciente
                     </h6>
@@ -53,7 +97,7 @@
         </div>
         <div class="col-lg-6">
             <div class="card shadow-sm">
-                <div class="card-header bg-info text-white">
+                <div class="card-header">
                     <h6 class="mb-0">
                         <i class="fas fa-briefcase me-2"></i>Dados do Kit
                     </h6>
@@ -86,18 +130,18 @@
     <div class="row g-4 mb-4 fade-in-up">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header bg-warning text-dark">
+                <div class="card-header">
                     <h6 class="mb-0">
                         <i class="fas fa-tasks me-2"></i>Etapas do Processo
                     </h6>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        {% for fase, nome_fase in checklist.FASE_CHOICES %}
+                        {% for fase, nome_fase in phase_choices %}
                             {% for checklist_atual in kit_paciente.checklists.all %}
                                 {% if checklist_atual.fase == fase %}
                         <div class="col-md-4">
-                            <div class="card border {% if checklist_atual %}border-primary{% else %}border-secondary{% endif %}">
+                            <div class="card border border-light-subtle">
                                 <div class="card-body text-center">
                                     <h6 class="{% if not checklist_atual.pode_acessar %}text-muted{% endif %}">
                                         {% if checklist_atual.concluido %}
@@ -128,7 +172,7 @@
                                     <div class="mt-2">
                                         {% if checklist_atual.pode_acessar %}
                                         <a href="{% url 'checklist_etapa' kit_paciente.id fase %}" 
-                                           class="btn btn-primary btn-sm">
+                                                         class="btn btn-outline-primary btn-sm">
                                             <i class="fas fa-play me-1"></i>Acessar
                                         </a>
                                         {% else %}
@@ -154,7 +198,7 @@
     <div class="row g-4 mb-4 fade-in-up">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header bg-success text-white">
+                <div class="card-header">
                     <h6 class="mb-0">
                         <i class="fas fa-boxes me-2"></i>Materiais do Kit ({{ kit_paciente.kit.materiais.count }} itens)
                     </h6>
@@ -210,7 +254,7 @@
     <div class="row g-4 mb-4 fade-in-up">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header bg-dark text-white">
+                <div class="card-header">
                     <h6 class="mb-0">
                         <i class="fas fa-qrcode me-2"></i>QR Codes
                     </h6>
@@ -261,7 +305,7 @@
     <div class="row g-4 fade-in-up">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header bg-secondary text-white">
+                <div class="card-header">
                     <h6 class="mb-0">
                         <i class="fas fa-tools me-2"></i>Ações Rápidas
                     </h6>
@@ -281,10 +325,10 @@
                             </a>
                         </div>
                         <div class="col-md-3">
-                            <button class="btn btn-warning btn-lg w-100" 
-                                    onclick="window.print()">
-                                <i class="fas fa-print me-2"></i>Imprimir
-                            </button>
+                            <a href="{% url 'imprimir_etiquetas_materiais' kit_paciente.id %}" 
+                               class="btn btn-outline-primary btn-lg w-100">
+                                <i class="fas fa-tags me-2"></i>Etiquetas QR
+                            </a>
                         </div>
                         <div class="col-md-3">
                             <a href="{% url 'dashboard_kit_paciente' %}" 
@@ -299,58 +343,80 @@
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Animações de entrada
-    const elements = document.querySelectorAll('.fade-in-up');
-    elements.forEach((el, index) => {
-        setTimeout(() => {
-            el.style.opacity = '0';
-            el.style.transform = 'translateY(20px)';
-            el.style.transition = 'all 0.6s ease';
-            
-            setTimeout(() => {
-                el.style.opacity = '1';
-                el.style.transform = 'translateY(0)';
-            }, 50);
-        }, index * 100);
-    });
-});
-</script>
-
 <style>
-/* Animações */
-.fade-in-up {
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.6s ease;
+.details-header-title {
+    color: #e9f3ff;
+    font-weight: 700;
 }
 
-/* Cards */
+.details-header-title i {
+    color: #e9f3ff;
+}
+
+.details-header-subtitle {
+    color: #ccddf1;
+    font-weight: 500;
+}
+
+.btn-relatorio-final {
+    font-weight: 700;
+}
+
+.btn-relatorio-disabled {
+    background-color: #6f7f90 !important;
+    border-color: #6f7f90 !important;
+    color: #f4f8fc !important;
+    opacity: 0.85;
+}
+
+.fade-in-up {
+    opacity: 1;
+    transform: none;
+    transition: none;
+}
+
+/* Cards (sobrescreve detalhes para manter padrão mais sóbrio) */
 .card {
-    border: none;
-    border-radius: 10px;
-    transition: all 0.3s ease;
+    border: 1px solid #d7e2ee;
+    border-radius: 12px;
+    transition: box-shadow 0.25s ease;
 }
 
 .card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+    transform: none;
+    box-shadow: 0 8px 22px rgba(13, 56, 98, 0.1);
 }
 
 /* Progress bars */
 .progress {
-    background-color: #e9ecef;
+    background-color: #eef3f9;
+    border-radius: 999px;
+}
+
+.progress-bar {
+    background: #0f5ea8 !important;
 }
 
 /* Badges */
 .badge {
-    font-size: 0.8em;
+    font-size: 0.78em;
+    font-weight: 600;
 }
 
 /* QR Codes */
 .border {
-    border: 2px dashed #dee2e6 !important;
+    border: 1.5px dashed #b8c9dc !important;
+    background: #f8fbff;
+}
+
+.table td,
+.table th {
+    vertical-align: middle;
+}
+
+.table code {
+    color: #315173;
+    font-size: 0.82rem;
 }
 
 /* Responsividade */

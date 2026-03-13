@@ -18,8 +18,11 @@
                 <a href="{% url 'cadastrar_kit' %}" class="menu-item">
                     <i class="fas fa-layer-group me-2"></i>Novo Kit
                 </a>
-                <a href="{% url 'cadastrar_checklist' %}" class="menu-item">
-                    <i class="fas fa-clipboard me-2"></i>Novo Checklist
+                <a href="{% url 'criar_kit_paciente' %}" class="menu-item">
+                    <i class="fas fa-clipboard me-2"></i>Novo Processo
+                </a>
+                <a href="{% url 'dashboard_kit_paciente' %}" class="menu-item">
+                    <i class="fas fa-tasks me-2"></i>Processos
                 </a>
                 <button class="menu-item" onclick="scanQR()">
                     <i class="fas fa-qrcode me-2"></i>Escanear QR
@@ -97,21 +100,21 @@
             </div>
         </div>
 
-        <!-- Card Checklists -->
+        <!-- Card Processos (substitui antigo "Checklists") -->
         <div class="col-md-4 mb-4 fade-in-up">
             <div class="br-card category-tag-card-large hover-lift">
                 <div class="card-content p-0">
                     <div class="dashboard-img-wrapper-large">
-                        <img src="{% static 'img/checklist.png' %}" draggable="false" class="dashboard-img" alt="Checklists" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-                        <i class="fas fa-clipboard-check dashboard-fallback-icon text-warning"></i>
+                        <img src="{% static 'img/process.png' %}" draggable="false" class="dashboard-img" alt="Processos" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                        <i class="fas fa-tasks dashboard-fallback-icon text-warning"></i>
                     </div>
                 </div>
                 <div class="card-footer text-center">
-                    <p class="text-up-03 title mt-2">Checklists</p>
-                    <p class="subtitle mt-1">Controle os checklists realizados</p>
-                    <p class="h2 mt-2">{{ total_checklists }}</p>
+                    <p class="text-up-03 title mt-2">Processos</p>
+                    <p class="subtitle mt-1">Fluxo cirúrgico com QR Code</p>
+                    <p class="h2 mt-2">{{ kits_paciente_count }}</p>
                     <div class="bg-primary-02 my-3">
-                        <a class="br-button secondary small center" href="{% url 'lista_checklists' %}">
+                        <a class="br-button secondary small center" href="{% url 'dashboard_kit_paciente' %}">
                             <i class="fas fa-arrow-right me-1"></i>Acessar
                         </a>
                     </div>

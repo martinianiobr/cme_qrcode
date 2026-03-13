@@ -1,0 +1,507 @@
+{% extends 'materiais/base.html' %}
+{% block title %}Checklist - {{ checklist.get_fase_display }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">
+            <i class="fas fa-clipboard-list me-2"></i>{{ checklist.get_fase_display }} - {{ kit_paciente.paciente.nome }}
+        </h4>
+        <a href="{% url 'detalhes_kit_paciente' kit_paciente.id %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <!-- Scanner Section (reutiliza o conteúdo de scan_qr_code.html) -->
+    <div class="card shadow-sm mb-3 fade-in-up">
+        <div class="card-body p-0">
+            <!-- Camera Preview -->
+            <div class="scanner-container">
+                <video id="qr-video" width="100%" height="300" autoplay playsinline></video>
+                <canvas id="qr-canvas" style="display:none;"></canvas>
+                
+                <!-- Scanner Overlay -->
+                <div class="scanner-overlay">
+                    <div class="scan-frame">
+                        <div class="scan-corner top-left"></div>
+                        <div class="scan-corner top-right"></div>
+                        <div class="scan-corner bottom-left"></div>
+                        <div class="scan-corner bottom-right"></div>
+                    </div>
+                    
+                    <div class="scan-info text-center">
+                        <h5 id="scan-status" class="mb-2">
+                            {% if checklist %}
+                                Escaneie os materiais do checklist
+                            {% else %}
+                                Escaneie o QR Code do kit/paciente
+                            {% endif %}
+                        </h5>
+                        <p id="scan-result" class="text-muted mb-0">
+                            Aguardando leitura...
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Alternativo (Leitor Externo) -->
+    <div class="card shadow-sm mb-3 fade-in-up">
+        <div class="card-body">
+            <h6 class="card-title">
+                <i class="fas fa-keyboard me-2"></i>Leitor Externo
+            </h6>
+            <div class="input-group">
+                <input type="text" 
+                       id="qr-input" 
+                       class="form-control form-control-lg"
+                       placeholder="Digite o código QR ou use leitor externo"
+                       autocomplete="off">
+                <button class="btn btn-primary" onclick="processarInputQR()">
+                    <i class="fas fa-check"></i> Processar
+                </button>
+            </div>
+            <small class="text-muted">
+                Use um leitor de QR Code USB ou digite o código manualmente
+            </small>
+        </div>
+    </div>
+
+    <!-- Checklist Ativo -->
+    {% if checklist %}
+    <div class="card shadow-sm fade-in-up">
+        <div class="card-header bg-light">
+            <h6 class="mb-0">
+                <i class="fas fa-tasks me-2"></i>Itens do Checklist
+            </h6>
+        </div>
+        <div class="card-body">
+            <!-- Progresso -->
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <small class="text-muted">Progresso</small>
+                    <small class="text-muted"><span id="itens-checados">{{ checklist.itens_checados }}</span> de <span id="total-itens">{{ checklist.total_itens }}</span></small>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar bg-success" 
+                         id="progress-bar" 
+                         style="width: {{ checklist.progresso }}%">
+                        {{ checklist.progresso }}%
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Itens -->
+            <div class="itens-checklist" id="itens-container">
+                {% for material_id, item_data in checklist.itens.items %}
+                <div class="item-checklist d-flex justify-content-between align-items-center p-2 border-bottom {% if item_data.checado %}bg-success bg-opacity-10{% endif %}" 
+                     data-material-id="{{ material_id }}">
+                    <div class="d-flex align-items-center">
+                        <div class="item-status me-3">
+                            {% if item_data.checado %}
+                                <i class="fas fa-check-circle text-success fa-lg"></i>
+                            {% else %}
+                                <i class="fas fa-circle text-muted fa-lg"></i>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <strong>{{ item_data.material_nome }}</strong>
+                            <br>
+                            <small class="text-muted">{{ item_data.material_codigo }}</small>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        {% if item_data.checado %}
+                            <div class="checado-info">
+                                <i class="fas fa-qrcode text-info"></i>
+                                <small class="d-block text-success">{{ item_data.metodo|title }}</small>
+                                <small class="text-muted">
+                                    {{ item_data.data|date:"H:i:s" }}
+                                </small>
+                            </div>
+                        {% else %}
+                            <span class="badge bg-secondary">Pendente</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Ações -->
+            <div class="mt-3 d-flex gap-2">
+                <button class="btn btn-outline-primary flex-fill" onclick="pausarScanner()">
+                    <i class="fas fa-pause me-1"></i>Pausar
+                </button>
+                <button id="concluir-etapa-btn" class="btn btn-success flex-fill" onclick="concluirEtapa()" 
+                        {% if not checklist.todos_itens_checados %}disabled{% endif %}>
+                    <i class="fas fa-check me-1"></i>Concluir Etapa
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Histórico de Leituras -->
+    <div class="card shadow-sm fade-in-up">
+        <div class="card-header bg-light">
+            <h6 class="mb-0">
+                <i class="fas fa-history me-2"></i>Últimas Leituras
+            </h6>
+        </div>
+        <div class="card-body">
+            <div id="historico-leituras" class="leituras-list">
+                <div class="text-muted text-center py-3">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Nenhuma leitura realizada ainda
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Sucesso -->
+<div class="modal fade" id="sucessoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-check-circle me-2"></i>Item Marcado!
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
+                <h5 id="sucesso-mensagem">Material marcado com sucesso!</h5>
+                <p class="text-muted" id="sucesso-detalhes"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                    Continuar Escaneando
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/qr-scanner/qr-scanner.umd.min.js"></script>
+<script>
+let scanner = null;
+let scannerAtivo = true;
+let historicoLeituras = [];
+
+// Inicializar scanner
+document.addEventListener('DOMContentLoaded', function() {
+    inicializarScanner();
+    
+    // Focar no input para leitor externo
+    document.getElementById('qr-input').focus();
+});
+
+async function inicializarScanner() {
+    try {
+        const videoElement = document.getElementById('qr-video');
+        
+        scanner = new QrScanner(
+            videoElement,
+            result => processarQRCode(result.data),
+            {
+                highlightScanRegion: true,
+                highlightCodeOutline: true,
+            }
+        );
+        
+        await scanner.start();
+        mostrarStatus('Scanner ativo', 'success');
+        
+    } catch (error) {
+        console.error('Erro ao iniciar scanner:', error);
+        mostrarStatus('Câmera não disponível', 'warning');
+        document.getElementById('qr-video').style.display = 'none';
+    }
+}
+
+function processarQRCode(qrData) {
+    if (!scannerAtivo) return;
+    
+    console.log('QR Code detectado:', qrData);
+    
+    // Feedback visual e sonoro
+    if (navigator.vibrate) {
+        navigator.vibrate(200);
+    }
+    tocarSomConfirmacao();
+    
+    // Adicionar ao histórico
+    adicionarAoHistorico(qrData, 'sucesso');
+    
+    // Enviar para o servidor
+    fetch('{% url "processar_qr_code" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ qr_data: qrData })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            mostrarSucesso(data.message, data);
+            atualizarInterface(data);
+        } else if (data.status === 'redirect') {
+            window.location.href = data.url;
+        } else {
+            mostrarErro(data.message);
+            adicionarAoHistorico(qrData, 'erro', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarErro('Erro ao processar QR Code');
+        adicionarAoHistorico(qrData, 'erro', 'Erro de conexão');
+    });
+}
+
+function processarInputQR() {
+    const input = document.getElementById('qr-input');
+    if (input.value.trim()) {
+        processarQRCode(input.value.trim());
+        input.value = '';
+        input.focus();
+    }
+}
+
+// Input para leitor externo
+document.getElementById('qr-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        processarInputQR();
+    }
+});
+
+function atualizarInterface(data) {
+    if (data.item_id && data.progresso !== undefined) {
+        // Atualizar item específico
+        const itemElement = document.querySelector(`[data-material-id="${data.item_id}"]`);
+        if (itemElement) {
+            itemElement.classList.add('bg-success', 'bg-opacity-10');
+            
+            // Atualizar status
+            const statusDiv = itemElement.querySelector('.item-status');
+            statusDiv.innerHTML = '<i class="fas fa-check-circle text-success fa-lg"></i>';
+            
+            // Atualizar informações
+            const infoDiv = itemElement.querySelector('.text-end');
+            infoDiv.innerHTML = `
+                <div class="checado-info">
+                    <i class="fas fa-qrcode text-info"></i>
+                    <small class="d-block text-success">${data.already_checked ? 'Ja conferido' : 'QR Code'}</small>
+                    <small class="text-muted">${new Date(data.timestamp || Date.now()).toLocaleTimeString()}</small>
+                </div>
+            `;
+        }
+        
+        // Atualizar progresso
+        if (data.progresso !== undefined) {
+            document.getElementById('progress-bar').style.width = data.progresso + '%';
+            document.getElementById('progress-bar').textContent = data.progresso + '%';
+            
+            // Atualizar contadores
+            const itensChecados = document.getElementById('itens-checados');
+            if (itensChecados) {
+                itensChecados.textContent = data.itens_checados;
+            }
+
+            const totalItens = document.getElementById('total-itens');
+            if (totalItens && data.total_itens !== undefined) {
+                totalItens.textContent = data.total_itens;
+            }
+
+            const concluirBtn = document.getElementById('concluir-etapa-btn');
+            if (concluirBtn && data.concluido) {
+                concluirBtn.disabled = false;
+            }
+        }
+    }
+}
+
+function mostrarStatus(mensagem, tipo = 'info') {
+    const statusElement = document.getElementById('scan-status');
+    statusElement.textContent = mensagem;
+    statusElement.className = `mb-2 text-${tipo}`;
+}
+
+function mostrarErro(mensagem) {
+    document.getElementById('scan-result').innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>${mensagem}`;
+    setTimeout(() => {
+        document.getElementById('scan-result').textContent = 'Aguardando leitura...';
+    }, 3000);
+}
+
+function mostrarSucesso(mensagem, data) {
+    document.getElementById('sucesso-mensagem').textContent = mensagem;
+    document.getElementById('sucesso-detalhes').textContent = data.timestamp ? 
+        `Lido em: ${new Date(data.timestamp).toLocaleString()}` : '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('sucessoModal'));
+    modal.show();
+}
+
+function adicionarAoHistorico(qrData, status, mensagem = '') {
+    const historicoDiv = document.getElementById('historico-leituras');
+    
+    // Limpar mensagem inicial
+    if (historicoLeituras.length === 0) {
+        historicoDiv.innerHTML = '';
+    }
+    
+    const leitura = {
+        qr: qrData,
+        status: status,
+        mensagem: mensagem,
+        timestamp: new Date()
+    };
+    
+    historicoLeituras.unshift(leitura);
+    
+    // Manter apenas últimas 10 leituras
+    if (historicoLeituras.length > 10) {
+        historicoLeituras.pop();
+    }
+    
+    // Atualizar interface
+    atualizarHistorico();
+}
+
+function atualizarHistorico() {
+    const historicoDiv = document.getElementById('historico-leituras');
+    
+    historicoDiv.innerHTML = historicoLeituras.map(leitura => `
+        <div class="leitura-item d-flex justify-content-between align-items-center p-2 border-bottom">
+            <div class="flex-grow-1">
+                <small class="text-muted">${leitura.timestamp.toLocaleTimeString()}</small>
+                <div class="fw-semibold">${leitura.qr}</div>
+                ${leitura.mensagem ? `<small class="text-danger">${leitura.mensagem}</small>` : ''}
+            </div>
+            <div>
+                ${leitura.status === 'sucesso' ? 
+                    '<i class="fas fa-check text-success"></i>' : 
+                    '<i class="fas fa-times text-danger"></i>'
+                }
+            </div>
+        </div>
+    `).join('');
+}
+
+function pausarScanner() {
+    scannerAtivo = !scannerAtivo;
+    
+    if (scanner) {
+        if (scannerAtivo) {
+            scanner.start();
+            mostrarStatus('Scanner ativo', 'success');
+        } else {
+            scanner.stop();
+            mostrarStatus('Scanner pausado', 'warning');
+        }
+    }
+}
+
+function concluirEtapa() {
+    if (confirm('Tem certeza que deseja concluir esta etapa?')) {
+        const checklistId = '{{ checklist.id|default:"" }}';
+        if (!checklistId) {
+            mostrarErro('Checklist não identificado para conclusão.');
+            return;
+        }
+
+        const concluirUrlBase = "{% url 'concluir_etapa' 0 %}";
+        const concluirUrl = concluirUrlBase.replace('/0/', `/${checklistId}/`);
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = concluirUrl;
+
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = getCookie('csrftoken');
+        form.appendChild(csrf);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function tocarSomConfirmacao() {
+    // Criar som de confirmação
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = 1000;
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.1);
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+
+<style>
+.mobile-scanner {
+    max-width: 100%;
+    padding: 10px;
+    background: #f8f9fa;
+    min-height: 100vh;
+}
+
+.scanner-container {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.scanner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.scan-frame {
+    width: 200px;
+    height: 200px;
+    position: relative;
+}
+</style>
+{% endblock %}

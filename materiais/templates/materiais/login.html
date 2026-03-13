@@ -1,4 +1,5 @@
 {% extends 'materiais/base.html' %}
+{% load static %}
 
 {% block title %}Login{% endblock %}
 
@@ -6,6 +7,7 @@
 <div class="d-flex justify-content-center align-items-center">
     <div class="card p-4 shadow-sm card-login w-100" style="max-width: 420px;">
         <div class="card-header border-0 bg-white mb-3 text-center">
+            <img src="{% static 'img/logo_cme.png' %}" alt="CME" class="login-logo mb-3" onerror="this.style.display='none'">
             <h2 class="card-title mb-1">Acesso ao CME</h2>
             <p class="card-subtitle text-muted">Faça login para acessar o sistema</p>
         </div>

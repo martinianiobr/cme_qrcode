@@ -51,6 +51,15 @@ class KitPaciente(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='agendado')
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
+    cancelado_em = models.DateTimeField(null=True, blank=True)
+    motivo_cancelamento = models.TextField(blank=True)
+    cancelado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='processos_cancelados'
+    )
     
     class Meta:
         ordering = ['-data_cirurgia']
@@ -92,6 +101,8 @@ class KitPaciente(models.Model):
     
     def atualizar_status(self):
         """Atualiza o status baseado nas etapas concluídas"""
+        if self.status == 'cancelado':
+            return
         if self.processo_concluido():
             self.status = 'concluido'
         elif self.pode_iniciar_pos():
@@ -102,10 +113,41 @@ class KitPaciente(models.Model):
             self.status = 'agendado'
         self.save()
 
+    def cancelar(self, usuario=None, motivo=''):
+        """Cancela o processo sem excluir para manter rastreabilidade."""
+        if self.status != 'cancelado':
+            self.status = 'cancelado'
+            self.cancelado_em = timezone.now()
+            self.motivo_cancelamento = (motivo or '').strip()
+            self.cancelado_por = usuario
+            self.save(update_fields=['status', 'cancelado_em', 'motivo_cancelamento', 'cancelado_por', 'atualizado_em'])
+
 
 class Material(models.Model):
+    ORIGEM_CADASTRO_CHOICES = [
+        ('sistema', 'Catálogo do sistema'),
+        ('contingencia', 'Cadastro de contingência'),
+    ]
+
+    CLASSIFICACAO_PROCESSAMENTO_CHOICES = [
+        ('reutilizavel_esteril', 'Reutilizável estéril'),
+        ('reprocessamento', 'Reutilizável para reprocessamento'),
+        ('descartavel_esteril', 'Descartável estéril'),
+        ('descartavel_nao_esteril', 'Descartável não estéril'),
+    ]
+
     nome = models.CharField(max_length=100)
     categoria = models.CharField(max_length=50)
+    codigo_catalogo = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    tipo = models.CharField(max_length=100, blank=True)
+    tamanho = models.CharField(max_length=50, blank=True)
+    material_composicao = models.CharField(max_length=100, blank=True)
+    uso_observacao = models.TextField(blank=True)
+    classificacao_processamento = models.CharField(
+        max_length=30,
+        choices=CLASSIFICACAO_PROCESSAMENTO_CHOICES,
+        default='reutilizavel_esteril'
+    )
     lote = models.CharField(max_length=50)
     data_esterilizacao = models.DateField()
     status_esterilizacao = models.CharField(
@@ -118,10 +160,17 @@ class Material(models.Model):
     estoque = models.PositiveIntegerField(default=0)
     fornecedor = models.CharField(max_length=100, blank=True)
     localizacao = models.CharField(max_length=100, blank=True)
+    origem_cadastro = models.CharField(
+        max_length=20,
+        choices=ORIGEM_CADASTRO_CHOICES,
+        default='contingencia'
+    )
     codigo_qr = models.CharField(max_length=200, unique=True, blank=True)
     qr_image = models.ImageField(upload_to='qrcodes/', blank=True, null=True)  # imagem do QR
 
     def __str__(self):
+        if self.tipo:
+            return f"{self.nome} - {self.tipo}"
         return self.nome
 
     class Meta:
@@ -148,7 +197,27 @@ class Material(models.Model):
 
 
 class Kit(models.Model):
+    ORIGEM_CADASTRO_CHOICES = [
+        ('sistema', 'Catálogo do sistema'),
+        ('manual', 'Cadastro manual'),
+    ]
+
     nome = models.CharField(max_length=100)
+    especialidade = models.CharField(max_length=100, blank=True)
+    procedimento_cirurgico = models.CharField(max_length=150, blank=True)
+    origem_cadastro = models.CharField(
+        max_length=20,
+        choices=ORIGEM_CADASTRO_CHOICES,
+        default='manual'
+    )
+    criado_em = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    criado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='kits_criados'
+    )
     materiais = models.ManyToManyField(Material)
     lacre = models.CharField(max_length=50)
     codigo_qr = models.CharField(max_length=200, unique=True, blank=True)
@@ -300,6 +369,10 @@ class Checklist(models.Model):
         self.save()
 
 
+# legacy model preserved for older migrations; the current
+# process flow uses a JSONField on Checklist for item tracking.
+# Eventually this model and its tables can be removed once no data
+# depends on it.
 class ChecklistItem(models.Model):
     checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE)
     material = models.ForeignKey(Material, on_delete=models.CASCADE)

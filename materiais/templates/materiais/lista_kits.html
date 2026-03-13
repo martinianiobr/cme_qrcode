@@ -5,12 +5,12 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4 fade-in-up">
         <div>
-            <h2 class="mb-0">
+            <h2 class="mb-0 page-title">
                 <i class="fas fa-briefcase me-2 text-primary"></i>Kits Cirúrgicos
             </h2>
             <p class="text-muted mb-0">Conjuntos de materiais organizados por procedimento</p>
         </div>
-        <a href="{% url 'cadastrar_kit' %}" class="btn btn-primary pulse">
+        <a href="{% url 'cadastrar_kit' %}" class="btn btn-primary">
             <i class="fas fa-plus-circle me-2"></i>Novo Kit
         </a>
     </div>
@@ -24,8 +24,8 @@
                         <label for="search" class="form-label fw-semibold">
                             <i class="fas fa-search me-1 text-primary"></i>Buscar Kit
                         </label>
-                        <div class="input-group input-group-lg">
-                            <span class="input-group-text bg-primary text-white">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-secondary border-end-0">
                                 <i class="fas fa-search"></i>
                             </span>
                             <input type="text" 
@@ -69,9 +69,9 @@
         <div class="col-lg-4 col-md-6 fade-in-up">
             <div class="card h-100 shadow-sm hover-lift">
                 <!-- Header do Card -->
-                <div class="card-header bg-light py-3">
+                <div class="card-header py-3">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 text-primary">
+                        <h5 class="mb-0">
                             <i class="fas fa-briefcase me-2"></i>{{ kit.nome }}
                         </h5>
                         <span class="badge bg-info">
@@ -82,9 +82,40 @@
 
                 <!-- Card Body -->
                 <div class="card-body">
+                    <div class="mb-3 d-flex flex-wrap gap-2">
+                        {% if kit.especialidade %}
+                        <span class="badge bg-primary">{{ kit.especialidade }}</span>
+                        {% endif %}
+                        {% if kit.procedimento_cirurgico %}
+                        <span class="badge bg-info text-dark">{{ kit.procedimento_cirurgico }}</span>
+                        {% endif %}
+                        <span class="badge {% if kit.origem_cadastro == 'sistema' %}bg-dark{% else %}bg-secondary{% endif %}">
+                            {{ kit.get_origem_cadastro_display }}
+                        </span>
+                    </div>
                     <div class="mb-3">
                         <small class="text-muted">Lacre</small>
                         <p class="mb-0 fw-semibold">{{ kit.lacre|default:"Não informado" }}</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Rastreabilidade</small>
+                        <small class="d-block">
+                            <strong>Gerado em:</strong>
+                            {% if kit.criado_em %}
+                                {{ kit.criado_em|date:"d/m/Y H:i" }}
+                            {% else %}
+                                Não informado
+                            {% endif %}
+                        </small>
+                        <small class="d-block">
+                            <strong>Gerado por:</strong>
+                            {% if kit.criado_por %}
+                                {{ kit.criado_por.get_full_name|default:kit.criado_por.username }}
+                            {% else %}
+                                Não informado
+                            {% endif %}
+                        </small>
                     </div>
                     
                     <div class="mb-3">
@@ -113,10 +144,10 @@
                 <!-- Card Footer -->
                 <div class="card-footer bg-light">
                     <div class="d-flex gap-2">
-                        <a href="{% url 'lista_checklists' %}" class="btn btn-outline-primary flex-fill">
-                            <i class="fas fa-info-circle me-1"></i>Ver Checklists
+                        <a href="{% url 'dashboard_kit_paciente' %}" class="btn btn-outline-primary flex-fill">
+                            <i class="fas fa-diagram-project me-1"></i>Ver Processos
                         </a>
-                        <a href="{% url 'cadastrar_checklist' %}" class="btn btn-outline-secondary">
+                        <a href="{% url 'criar_kit_paciente' %}" class="btn btn-outline-secondary">
                             <i class="fas fa-plus"></i>
                         </a>
                     </div>
@@ -196,12 +227,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <style>
 .hover-lift {
-    transition: all 0.3s ease;
+    transition: box-shadow 0.25s ease;
 }
 
 .hover-lift:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow-lg);
+    transform: none;
+    box-shadow: 0 8px 22px rgba(13, 56, 98, 0.1);
 }
 
 .fade-in-up {
